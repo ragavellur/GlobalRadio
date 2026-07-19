@@ -3,6 +3,7 @@ import Globe from './components/Globe';
 import SearchBar from './components/SearchBar';
 import Sidebar from './components/Sidebar';
 import NowPlaying from './components/NowPlaying';
+import LoadingIndicator from './components/LoadingIndicator';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
 
@@ -29,6 +30,9 @@ function AppContent() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#0a0a0a]">
+      {/* Loading Indicator */}
+      <LoadingIndicator />
+
       {/* Globe */}
       <Globe />
 
