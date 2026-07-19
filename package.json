@@ -5,10 +5,46 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "mkdir -p dist && cp -r public/* dist/ && cp index.html dist/",
+    "build": "tsc && vite build && cp -r public/data dist/ && cp dist/index.html dist/404.html",
     "preview": "vite preview"
   },
-  "keywords": ["radio", "globe", "maplibre", "webgl"],
+  "keywords": [
+    "radio",
+    "globe",
+    "maplibre",
+    "webgl"
+  ],
   "author": "ragavellur",
-  "license": "MIT"
+  "license": "MIT",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ragavellur/GlobalRadio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ragavellur/GlobalRadio/issues"
+  },
+  "homepage": "https://github.com/ragavellur/GlobalRadio#readme",
+  "dependencies": {
+    "fuse.js": "^7.5.0",
+    "kdbush": "^4.1.0",
+    "maplibre-gl": "^5.24.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/kdbush": "^3.0.5",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.20",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  }
 }
