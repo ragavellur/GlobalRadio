@@ -5,21 +5,22 @@ import { useRadioStore } from '../lib/store';
 import { buildSpatialIndex, findNearestCityFromPoint } from '../lib/spatialIndex';
 import { createDotLayer } from '../lib/dotLayer';
 import { initSearch } from '../lib/search';
+import type { City } from '../types';
 
 export default function Globe() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const dotLayerRef = useRef<any>(null);
-  const { cities, setCities, setIndexLoaded, selectCity, setSidebarOpen, setSidebarTab } = useRadioStore();
+  const citiesRef = useRef<City[]>([]);
+  const { setCities, setIndexLoaded, selectCity, setSidebarOpen, setSidebarTab } = useRadioStore();
 
-  const handleCityClick = useCallback((city: any) => {
+  const handleCityClick = useCallback((city: City) => {
     if (!city) return;
 
     selectCity(city);
     setSidebarOpen(true);
     setSidebarTab('station');
 
-    // Fly to city
     if (map.current) {
       map.current.flyTo({
         center: [city.lon, city.lat],
@@ -34,14 +35,12 @@ export default function Globe() {
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Initialize map
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: {
         version: 8,
         sources: {},
         layers: [],
-        glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       },
       center: [0, 20],
       zoom: 1.5,
@@ -50,14 +49,15 @@ export default function Globe() {
       canvasContextAttributes: { antialias: true },
     });
 
-    // Set globe projection after creation
-    map.current.setProjection({ type: 'globe' });
-
-    // Add atmosphere effect
     map.current.on('load', () => {
       if (!map.current) return;
 
-      // Add sky layer for atmosphere
+      try {
+        map.current.setProjection({ type: 'globe' });
+      } catch (e) {
+        console.warn('setProjection failed:', e);
+      }
+
       map.current.addLayer({
         id: 'sky',
         type: 'sky' as any,
@@ -68,27 +68,25 @@ export default function Globe() {
         },
       } as any);
 
-      // Load city index and build spatial index
       loadCityIndex();
     });
 
-    // Handle click events for city selection
     map.current.on('click', (e: maplibregl.MapMouseEvent) => {
       const city = findNearestCityFromPoint(
         e.point.x,
         e.point.y,
         map.current,
-        cities,
-        500
+        citiesRef.current,
+        10
       );
       if (city) {
         handleCityClick(city);
       }
     });
 
-    // Cleanup
     return () => {
       map.current?.remove();
+      map.current = null;
     };
   }, []);
 
@@ -97,12 +95,12 @@ export default function Globe() {
       const response = await fetch('/data/index.json');
       if (!response.ok) throw new Error('Failed to load index');
       const data = await response.json();
+      citiesRef.current = data;
       setCities(data);
       buildSpatialIndex(data);
       initSearch(data);
       setIndexLoaded(true);
 
-      // Add dot layer after data is loaded
       if (map.current) {
         const dotLayer = createDotLayer(data, handleCityClick);
         dotLayerRef.current = dotLayer;
@@ -114,8 +112,8 @@ export default function Globe() {
   };
 
   return (
-    <div 
-      ref={mapContainer} 
+    <div
+      ref={mapContainer}
       className="absolute inset-0 w-full h-full"
       style={{ background: '#0a0a0a' }}
     />
