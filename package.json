@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "cp public/* dist/ 2>/dev/null || true",
+    "build": "mkdir -p dist && cp -r public/* dist/ && cp index.html dist/",
     "preview": "vite preview"
   },
   "keywords": ["radio", "globe", "maplibre", "webgl"],
