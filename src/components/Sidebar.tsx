@@ -1,7 +1,31 @@
+import { useState, useEffect } from 'react';
 import { useRadioStore } from '../lib/store';
+import { findStationsForCity, filterValidStations, sortStations } from '../lib/stations';
+import type { Station } from '../types';
 
 export default function Sidebar() {
-  const { sidebarOpen, setSidebarOpen, sidebarTab, setSidebarTab, selectedCity, searchQuery, searchResults } = useRadioStore();
+  const store = useRadioStore();
+  const { sidebarOpen, setSidebarOpen, sidebarTab, setSidebarTab, selectedCity, searchQuery, searchResults, playStation, currentStation, selectCity } = store;
+  const [stations, setStations] = useState<Station[]>([]);
+  const [loadingStations, setLoadingStations] = useState(false);
+
+  useEffect(() => {
+    if (selectedCity) {
+      setLoadingStations(true);
+      findStationsForCity(selectedCity.countryId, selectedCity.city)
+        .then((data) => {
+          const valid = filterValidStations(data);
+          setStations(sortStations(valid));
+          setLoadingStations(false);
+        })
+        .catch(() => {
+          setStations([]);
+          setLoadingStations(false);
+        });
+    } else {
+      setStations([]);
+    }
+  }, [selectedCity]);
 
   if (!sidebarOpen) return null;
 
@@ -56,7 +80,13 @@ export default function Sidebar() {
               <ul className="space-y-2">
                 {searchResults.map((city, index) => (
                   <li key={`${city.cityId}-${index}`}>
-                    <button className="w-full text-left p-3 hover:bg-white/10 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => {
+                        selectCity(city);
+                        setSidebarTab('station');
+                      }}
+                      className="w-full text-left p-3 hover:bg-white/10 rounded-lg transition-colors"
+                    >
                       <div className="font-medium text-white">{city.city}</div>
                       <div className="text-sm text-gray-400">{city.country}</div>
                     </button>
@@ -81,7 +111,36 @@ export default function Sidebar() {
               <div>
                 <h3 className="text-xl font-semibold text-white mb-2">{selectedCity.city}</h3>
                 <p className="text-sm text-gray-400 mb-4">{selectedCity.country}</p>
-                <p className="text-sm">Loading stations...</p>
+                
+                {loadingStations ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-6 h-6 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : stations.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500 mb-3">{stations.length} stations available</p>
+                    {stations.map((station, index) => (
+                      <button
+                        key={`${station.url}-${index}`}
+                        onClick={() => playStation(station)}
+                        className={`w-full text-left p-3 rounded-lg transition-colors ${
+                          currentStation?.url === station.url
+                            ? 'bg-green-500/20 border border-green-500/50'
+                            : 'hover:bg-white/10 border border-transparent'
+                        }`}
+                      >
+                        <div className="font-medium text-white text-sm truncate">{station.name}</div>
+                        {station.codec && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {station.codec}{station.bitrate ? ` • ${station.bitrate} kbps` : ''}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No stations available</p>
+                )}
               </div>
             ) : (
               <p className="text-center py-8">Select a city to see stations</p>
