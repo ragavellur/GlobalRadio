@@ -1,10 +1,34 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useRadioStore } from '../lib/store';
+import { buildSpatialIndex, findNearestCityFromPoint } from '../lib/spatialIndex';
+import { createDotLayer } from '../lib/dotLayer';
 
 export default function Globe() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const dotLayerRef = useRef<any>(null);
+  const { cities, setCities, setIndexLoaded, selectCity, setSidebarOpen, setSidebarTab } = useRadioStore();
+
+  const handleCityClick = useCallback((city: any) => {
+    if (!city) return;
+
+    selectCity(city);
+    setSidebarOpen(true);
+    setSidebarTab('station');
+
+    // Fly to city
+    if (map.current) {
+      map.current.flyTo({
+        center: [city.lon, city.lat],
+        zoom: 5,
+        pitch: 45,
+        bearing: Math.random() * 30 - 15,
+        duration: 2000,
+      });
+    }
+  }, [selectCity, setSidebarOpen, setSidebarTab]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -42,6 +66,23 @@ export default function Globe() {
           'sky-atmosphere-sun-intensity': 15,
         },
       } as any);
+
+      // Load city index and build spatial index
+      loadCityIndex();
+    });
+
+    // Handle click events for city selection
+    map.current.on('click', (e: maplibregl.MapMouseEvent) => {
+      const city = findNearestCityFromPoint(
+        e.point.x,
+        e.point.y,
+        map.current,
+        cities,
+        500
+      );
+      if (city) {
+        handleCityClick(city);
+      }
     });
 
     // Cleanup
@@ -49,6 +90,26 @@ export default function Globe() {
       map.current?.remove();
     };
   }, []);
+
+  const loadCityIndex = async () => {
+    try {
+      const response = await fetch('/data/index.json');
+      if (!response.ok) throw new Error('Failed to load index');
+      const data = await response.json();
+      setCities(data);
+      buildSpatialIndex(data);
+      setIndexLoaded(true);
+
+      // Add dot layer after data is loaded
+      if (map.current) {
+        const dotLayer = createDotLayer(data, handleCityClick);
+        dotLayerRef.current = dotLayer;
+        map.current.addLayer(dotLayer as any);
+      }
+    } catch (err) {
+      console.error('Failed to load city index:', err);
+    }
+  };
 
   return (
     <div 
