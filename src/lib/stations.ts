@@ -1,24 +1,33 @@
-import type { CityData, Station } from '../types';
+import type { Station } from '../types';
 
 const DATA_BASE = '/data';
 
-export async function loadCityStations(countryId: number): Promise<CityData[]> {
-  const response = await fetch(`${DATA_BASE}/stations/${countryId}.json`);
-  if (!response.ok) {
-    throw new Error(`Failed to load stations for country ${countryId}`);
-  }
-  return response.json();
-}
+type RawStation = [string, string];
+type StationFile = Record<string, RawStation[]>;
 
 export async function findStationsForCity(
-  countryId: number,
+  countryCode: string,
   cityName: string
 ): Promise<Station[]> {
-  const allCityData = await loadCityStations(countryId);
-  const cityData = allCityData.find(
-    (cd) => cd.city.toLowerCase() === cityName.toLowerCase()
-  );
-  return cityData?.stations || [];
+  const response = await fetch(`${DATA_BASE}/stations/${countryCode.toLowerCase()}.json`);
+  if (!response.ok) {
+    throw new Error(`Failed to load stations for country ${countryCode}`);
+  }
+  const data: StationFile = await response.json();
+
+  // Find the key that matches the city name (format: "CityName,CC")
+  const key = Object.keys(data).find((k) => {
+    const parts = k.split(',');
+    return parts[0].toLowerCase() === cityName.toLowerCase();
+  });
+
+  if (!key) return [];
+
+  return data[key].map(([name, url]) => ({
+    name,
+    url,
+    lastCheckOK: true,
+  }));
 }
 
 export function filterValidStations(stations: Station[]): Station[] {

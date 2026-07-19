@@ -12,7 +12,7 @@ export default function Sidebar() {
   useEffect(() => {
     if (selectedCity) {
       setLoadingStations(true);
-      findStationsForCity(selectedCity.countryId, selectedCity.city)
+      findStationsForCity(selectedCity.country, selectedCity.city)
         .then((data) => {
           const valid = filterValidStations(data);
           setStations(sortStations(valid));

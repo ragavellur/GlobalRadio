@@ -5,6 +5,7 @@ import { useRadioStore } from '../lib/store';
 import { buildSpatialIndex, findNearestCityFromPoint } from '../lib/spatialIndex';
 import { createDotLayer } from '../lib/dotLayer';
 import { initSearch } from '../lib/search';
+import { transformCities } from '../lib/transform';
 import type { City } from '../types';
 
 export default function Globe() {
@@ -39,8 +40,26 @@ export default function Globe() {
       container: mapContainer.current,
       style: {
         version: 8,
-        sources: {},
-        layers: [],
+        sources: {
+          'osm-raster': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; OpenStreetMap contributors',
+          },
+        },
+        layers: [
+          {
+            id: 'osm',
+            type: 'raster',
+            source: 'osm-raster',
+            paint: {
+              'raster-brightness-max': 0.15,
+              'raster-contrast': 0.3,
+              'raster-saturation': -1,
+            },
+          },
+        ],
       },
       center: [0, 20],
       zoom: 1.5,
@@ -57,16 +76,6 @@ export default function Globe() {
       } catch (e) {
         console.warn('setProjection failed:', e);
       }
-
-      map.current.addLayer({
-        id: 'sky',
-        type: 'sky' as any,
-        paint: {
-          'sky-type': 'atmosphere',
-          'sky-atmosphere-sun': [0.0, 0.0],
-          'sky-atmosphere-sun-intensity': 15,
-        },
-      } as any);
 
       loadCityIndex();
     });
@@ -94,7 +103,8 @@ export default function Globe() {
     try {
       const response = await fetch('/data/index.json');
       if (!response.ok) throw new Error('Failed to load index');
-      const data = await response.json();
+      const rawData = await response.json();
+      const data = transformCities(rawData);
       citiesRef.current = data;
       setCities(data);
       buildSpatialIndex(data);

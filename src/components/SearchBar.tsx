@@ -48,12 +48,15 @@ export default function SearchBar() {
       <div className="relative">
         <input
           ref={inputRef}
+          id="city-search"
+          name="city-search"
           type="text"
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           placeholder="Search for a city... (press /)"
+          aria-label="Search for a city"
           className="w-full px-4 py-3 pl-10 bg-black/75 backdrop-blur-sm border border-white/10 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-green-400/50 focus:ring-1 focus:ring-green-400/50 transition-all"
         />
         <svg

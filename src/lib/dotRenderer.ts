@@ -79,7 +79,7 @@ function createProgram(gl: WebGLRenderingContext): WebGLProgram | null {
 export interface DotRenderer {
   setData: (cities: City[]) => void;
   setHighlight: (cityId: number | null) => void;
-  render: (gl: WebGLRenderingContext, matrix: number[], globalScale: number) => void;
+  render: (gl: WebGLRenderingContext, matrix: Float32Array, globalScale: number) => void;
   destroy: () => void;
 }
 
@@ -172,7 +172,7 @@ export function createDotRenderer(): DotRenderer {
       gl.bufferData(gl.ARRAY_BUFFER, brightness, gl.DYNAMIC_DRAW);
     },
 
-    render: (glContext: WebGLRenderingContext, matrix: number[], globalScale: number) => {
+    render: (glContext: WebGLRenderingContext, matrix: Float32Array, globalScale: number) => {
       if (!cities.length) return;
 
       gl = glContext;
