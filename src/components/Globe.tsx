@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useRadioStore } from '../lib/store';
 import { buildSpatialIndex, findNearestCityFromPoint } from '../lib/spatialIndex';
 import { createDotLayer } from '../lib/dotLayer';
+import { initSearch } from '../lib/search';
 
 export default function Globe() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -98,6 +99,7 @@ export default function Globe() {
       const data = await response.json();
       setCities(data);
       buildSpatialIndex(data);
+      initSearch(data);
       setIndexLoaded(true);
 
       // Add dot layer after data is loaded

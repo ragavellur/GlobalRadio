@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRadioStore } from '../lib/store';
+import { searchCities } from '../lib/search';
 
 export default function SearchBar() {
   const { searchQuery, setSearchQuery, searchResults, setSearchResults, setSidebarOpen, setSidebarTab, selectCity } = useRadioStore();
@@ -8,10 +9,9 @@ export default function SearchBar() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // TODO: Implement Fuse.js search in Phase 4
     if (query.length > 2) {
-      // Placeholder for search results
-      setSearchResults([]);
+      const results = searchCities(query);
+      setSearchResults(results);
     } else {
       setSearchResults([]);
     }
