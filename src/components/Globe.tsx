@@ -102,7 +102,9 @@ export default function Globe() {
         rotationActiveRef.current = true;
         const rotate = () => {
           if (!rotationActiveRef.current || !mapRef.current) return;
-          mapRef.current.setBearing(mapRef.current.getBearing() - 0.02);
+          const c = mapRef.current.getCenter();
+          c.lng -= 0.02;
+          mapRef.current.setCenter(c);
           rotationRef.current = requestAnimationFrame(rotate);
         };
         rotationRef.current = requestAnimationFrame(rotate);
