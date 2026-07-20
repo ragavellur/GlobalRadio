@@ -90,6 +90,9 @@ export default function Globe() {
     mapRef.current = m;
     (window as any).__map = m;
 
+    const ro = new ResizeObserver(() => { try { m.resize(); } catch {} });
+    ro.observe(mapContainer.current);
+
     m.on('mousedown', stopRotation);
     m.on('touchstart', stopRotation);
     m.on('dragstart', stopRotation);
@@ -159,6 +162,9 @@ export default function Globe() {
       m.off('mousedown', stopRotation);
       m.off('touchstart', stopRotation);
       m.off('dragstart', stopRotation);
+      m.off('zoomstart', stopRotation);
+      m.off('movestart', stopRotation);
+      ro.disconnect();
       m.remove();
       mapRef.current = null;
       delete (window as any).__flyToCity;
