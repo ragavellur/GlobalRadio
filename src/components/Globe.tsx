@@ -102,7 +102,7 @@ export default function Globe() {
         rotationActiveRef.current = true;
         const rotate = () => {
           if (!rotationActiveRef.current || !mapRef.current) return;
-          mapRef.current.setBearing(mapRef.current.getBearing() + 0.02);
+          mapRef.current.setBearing(mapRef.current.getBearing() - 0.02);
           rotationRef.current = requestAnimationFrame(rotate);
         };
         rotationRef.current = requestAnimationFrame(rotate);
@@ -131,22 +131,22 @@ export default function Globe() {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
-            const city = findNearestCity(longitude, latitude, 10);
+            const city = findNearestCity(longitude, latitude, 500);
             if (city) {
               flyToCity(city);
             } else {
-              const fallback = findNearestCity(72.8777, 19.0760, 100);
+              const fallback = findNearestCity(73.8567, 18.5204, 500);
               if (fallback) flyToCity(fallback);
             }
           },
           () => {
-            const fallback = findNearestCity(72.8777, 19.0760, 100);
+            const fallback = findNearestCity(73.8567, 18.5204, 500);
             if (fallback) flyToCity(fallback);
           },
-          { timeout: 5000 }
+          { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 }
         );
       } else {
-        const fallback = findNearestCity(72.8777, 19.0760, 100);
+        const fallback = findNearestCity(73.8567, 18.5204, 500);
         if (fallback) flyToCity(fallback);
       }
     };
