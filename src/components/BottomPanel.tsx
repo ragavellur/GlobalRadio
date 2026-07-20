@@ -130,8 +130,8 @@ export default function BottomPanel() {
 
       {/* === Mobile panel (bottom sheet) === */}
       <div
-        className="sm:hidden fixed inset-x-0 z-10 pointer-events-none"
-        style={{ bottom: currentStation ? 90 : 0, maxHeight: currentStation ? 'calc(100dvh - 90px)' : '100dvh', overflow: 'hidden' }}
+        className="sm:hidden absolute inset-x-0 z-10 pointer-events-none"
+        style={{ bottom: currentStation ? 90 : 0, maxHeight: currentStation ? 'calc(100% - 90px)' : '100%', overflow: 'hidden' }}
       >
         <MobileDrawer
           selectedCity={selectedCity}
@@ -147,7 +147,7 @@ export default function BottomPanel() {
       </div>
 
       {currentStation && (
-        <div className="sm:hidden fixed inset-x-0 bottom-0 z-20 pointer-events-auto">
+        <div className="sm:hidden absolute inset-x-0 bottom-0 z-20 pointer-events-auto">
           <MobileNowPlaying
             currentStation={currentStation}
             selectedCity={selectedCity}
@@ -220,7 +220,7 @@ function DrawerContent({
 
             {/* Station list — scrollable */}
             {drawerOpen && (
-              <div className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100dvh - 250px)' }}>
+              <div className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100% - 250px)' }}>
                 {stations.length > 0 && (
                   <div style={{ background: 'rgba(25,25,25,0.95)', borderRadius: 8 }}>
                     <div className="p-3 pb-1">
@@ -438,7 +438,7 @@ function MobileDrawer({
   playStation: (s: Station) => void;
   hasPlayer: boolean;
 }) {
-  const maxH = hasPlayer ? 'calc(50dvh - 60px)' : '50dvh';
+  const maxH = hasPlayer ? 'calc(50% - 60px)' : '50%';
 
   return (
     <div
