@@ -74,7 +74,7 @@ export default function SearchPanel() {
             <button
               key={`${city.cityId}-${i}`}
               onMouseDown={() => handleSelect(city)}
-              onTouchEnd={() => handleSelect(city)}
+              onTouchEnd={(e) => { e.preventDefault(); handleSelect(city); }}
               className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
             >
               <div className="text-[14px] text-white">{city.city}</div>
