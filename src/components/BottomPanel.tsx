@@ -129,7 +129,7 @@ export default function BottomPanel() {
       </div>
 
       {/* === Mobile panel (bottom sheet) === */}
-      <div className="flex flex-col sm:hidden absolute inset-x-0 bottom-0 z-10 pointer-events-none">
+      <div className="flex flex-col sm:hidden absolute inset-x-0 bottom-0 z-10 pointer-events-none" style={{ maxHeight: '100vh', overflow: 'hidden' }}>
         {/* Mobile drawer — slides up from bottom */}
         <MobileDrawer
           selectedCity={selectedCity}
