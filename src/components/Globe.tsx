@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useRadioStore } from '../lib/store';
-import { buildSpatialIndex, findNearestCityFromPoint } from '../lib/spatialIndex';
+import { buildSpatialIndex, findNearestCityFromPoint, findNearestCity } from '../lib/spatialIndex';
 import { addDotLayer, highlightCity } from '../lib/dotRenderer';
 import { initSearch } from '../lib/search';
 import { transformCities } from '../lib/transform';
@@ -12,10 +12,19 @@ export default function Globe() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const citiesRef = useRef<City[]>([]);
+  const rotationRef = useRef<number | null>(null);
+  const rotationActiveRef = useRef(false);
   const { setCities, setIndexLoaded, selectCity } = useRadioStore();
 
   const handleCityClick = useCallback((city: City) => {
     if (!city || !mapRef.current) return;
+
+    rotationActiveRef.current = false;
+    if (rotationRef.current) {
+      cancelAnimationFrame(rotationRef.current);
+      rotationRef.current = null;
+    }
+
     selectCity(city);
     highlightCity(mapRef.current, city.cityId);
     mapRef.current.flyTo({
@@ -37,6 +46,14 @@ export default function Globe() {
     };
     console.warn = (...args: any[]) => { if (!suppressCheck(...args)) origWarn.apply(console, args); };
     console.error = (...args: any[]) => { if (!suppressCheck(...args)) origError.apply(console, args); };
+
+    const stopRotation = () => {
+      rotationActiveRef.current = false;
+      if (rotationRef.current) {
+        cancelAnimationFrame(rotationRef.current);
+        rotationRef.current = null;
+      }
+    };
 
     const m = new maplibregl.Map({
       container: mapContainer.current,
@@ -65,7 +82,7 @@ export default function Globe() {
           },
         ],
       },
-      center: [0, 20],
+      center: [78, 20],
       zoom: 1.5,
       pitch: 0,
       bearing: 0,
@@ -73,9 +90,23 @@ export default function Globe() {
     mapRef.current = m;
     (window as any).__map = m;
 
+    m.on('mousedown', stopRotation);
+    m.on('touchstart', stopRotation);
+    m.on('dragstart', stopRotation);
+
     m.on('load', () => {
       try { m.setProjection({ type: 'globe' }); } catch {}
       loadCityIndex(m);
+
+      setTimeout(() => {
+        rotationActiveRef.current = true;
+        const rotate = () => {
+          if (!rotationActiveRef.current || !mapRef.current) return;
+          mapRef.current.setBearing(mapRef.current.getBearing() + 0.02);
+          rotationRef.current = requestAnimationFrame(rotate);
+        };
+        rotationRef.current = requestAnimationFrame(rotate);
+      }, 5000);
     });
 
     m.on('click', (e: maplibregl.MapMouseEvent) => {
@@ -87,12 +118,50 @@ export default function Globe() {
       handleCityClick(city);
     };
 
+    (window as any).__playNearestCity = () => {
+      stopRotation();
+
+      if (citiesRef.current.length === 0) return;
+
+      const flyToCity = (city: City) => {
+        handleCityClick(city);
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            const city = findNearestCity(longitude, latitude, 10);
+            if (city) {
+              flyToCity(city);
+            } else {
+              const fallback = findNearestCity(72.8777, 19.0760, 100);
+              if (fallback) flyToCity(fallback);
+            }
+          },
+          () => {
+            const fallback = findNearestCity(72.8777, 19.0760, 100);
+            if (fallback) flyToCity(fallback);
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        const fallback = findNearestCity(72.8777, 19.0760, 100);
+        if (fallback) flyToCity(fallback);
+      }
+    };
+
     return () => {
       console.warn = origWarn;
       console.error = origError;
+      stopRotation();
+      m.off('mousedown', stopRotation);
+      m.off('touchstart', stopRotation);
+      m.off('dragstart', stopRotation);
       m.remove();
       mapRef.current = null;
       delete (window as any).__flyToCity;
+      delete (window as any).__playNearestCity;
     };
   }, []);
 

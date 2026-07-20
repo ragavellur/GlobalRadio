@@ -21,8 +21,12 @@ export default function BottomPanel() {
       setDrawerOpen(true);
       findStationsForCity(selectedCity.country, selectedCity.city)
         .then((data) => {
-          setStations(sortStations(filterValidStations(data)));
+          const filtered = sortStations(filterValidStations(data));
+          setStations(filtered);
           setLoadingStations(false);
+          if (filtered.length > 0) {
+            playStation(filtered[0]);
+          }
         })
         .catch(() => { setStations([]); setLoadingStations(false); });
     } else {
