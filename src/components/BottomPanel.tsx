@@ -441,7 +441,7 @@ function MobileDrawer({
     <div
       className="shrink-0 rounded-t-lg overflow-hidden flex flex-col"
       style={{
-        maxHeight: drawerOpen ? maxH : (hasPlayer ? 50 : 60),
+        maxHeight: drawerOpen ? maxH : (hasPlayer ? 130 : 60),
         transition: 'max-height 0.2s ease',
       }}
     >
