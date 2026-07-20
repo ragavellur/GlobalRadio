@@ -125,7 +125,7 @@ export default function BottomPanel() {
       </div>
 
       {/* === Mobile panel (bottom sheet) === */}
-      <div className="flex flex-col sm:hidden absolute inset-x-0 bottom-0 z-10">
+      <div className="flex flex-col sm:hidden absolute inset-x-0 bottom-0 z-10 pointer-events-none">
         {/* Mobile drawer — slides up from bottom */}
         <MobileDrawer
           selectedCity={selectedCity}
@@ -352,7 +352,7 @@ function MobileNowPlaying({
 }) {
   return (
     <div
-      className="shrink-0 rounded-t-lg overflow-hidden"
+      className="shrink-0 rounded-t-lg overflow-hidden pointer-events-auto"
       style={{ background: '#191919' }}
     >
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
@@ -446,7 +446,7 @@ function MobileDrawer({
           {/* Handle */}
           <button
             onClick={handleToggleDrawer}
-            className="flex items-center justify-center shrink-0"
+            className="flex items-center justify-center shrink-0 pointer-events-auto"
             style={{ height: 10, cursor: 'pointer' }}
             aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
           >
@@ -474,7 +474,7 @@ function MobileDrawer({
 
           {/* Station list — scrollable */}
           {drawerOpen && (
-            <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+            <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 pointer-events-auto">
               {stations.length > 0 && (
                 <div style={{ background: 'rgba(25,25,25,0.95)', borderRadius: 8 }}>
                   <div className="px-3 pb-1">
