@@ -42,7 +42,7 @@ function IntroPlayButton() {
 }
 
 function AppContent() {
-  const { selectCity, selectedCity } = useRadioStore();
+  const { selectCity } = useRadioStore();
   const { currentRoute } = useRouter();
 
   useEffect(() => {
@@ -54,11 +54,7 @@ function AppContent() {
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: '#2b2b2b' }}>
       <LoadingIndicator />
-      <div
-        className={`absolute inset-0 overflow-hidden ${selectedCity ? 'bottom-[140px] sm:bottom-0' : 'bottom-0'}`}
-      >
-        <Globe />
-      </div>
+      <Globe />
       <BottomPanel />
       <SearchPanel />
       <IntroPlayButton />
