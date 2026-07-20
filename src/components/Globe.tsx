@@ -20,7 +20,7 @@ export default function Globe() {
     highlightCity(mapRef.current, city.cityId);
     mapRef.current.flyTo({
       center: [city.lon, city.lat],
-      zoom: 5,
+      zoom: 7,
       pitch: 45,
       bearing: Math.random() * 30 - 15,
       duration: 2000,
@@ -29,6 +29,14 @@ export default function Globe() {
 
   useEffect(() => {
     if (!mapContainer.current) return;
+
+    const origWarn = console.warn;
+    const origError = console.error;
+    const suppressCheck = (...args: any[]) => {
+      return typeof args[0] === 'string' && args[0].includes('READ-usage buffer');
+    };
+    console.warn = (...args: any[]) => { if (!suppressCheck(...args)) origWarn.apply(console, args); };
+    console.error = (...args: any[]) => { if (!suppressCheck(...args)) origError.apply(console, args); };
 
     const m = new maplibregl.Map({
       container: mapContainer.current,
@@ -80,6 +88,8 @@ export default function Globe() {
     };
 
     return () => {
+      console.warn = origWarn;
+      console.error = origError;
       m.remove();
       mapRef.current = null;
       delete (window as any).__flyToCity;

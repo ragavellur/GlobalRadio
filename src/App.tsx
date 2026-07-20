@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import Globe from './components/Globe';
 import SearchPanel from './components/SearchPanel';
 import BottomPanel from './components/BottomPanel';
-import GlobeControls from './components/GlobeControls';
+
 import LoadingIndicator from './components/LoadingIndicator';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
@@ -22,7 +22,6 @@ function AppContent() {
       <LoadingIndicator />
       <Globe />
       <BottomPanel />
-      <GlobeControls />
       <SearchPanel />
     </div>
   );
