@@ -450,34 +450,37 @@ function MobileDrawer({
     >
       {selectedCity && (
         <>
-          {/* Handle */}
+          {/* Handle + Banner — click anywhere to toggle */}
           <button
             onClick={handleToggleDrawer}
-            className="flex items-center justify-center shrink-0 pointer-events-auto"
-            style={{ height: 10, cursor: 'pointer' }}
+            className="shrink-0 pointer-events-auto text-left"
             aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
+            style={{ cursor: 'pointer' }}
           >
-            <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
-          </button>
+            {/* Handle */}
+            <div className="flex items-center justify-center" style={{ height: 10 }}>
+              <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
+            </div>
 
-          {/* Banner */}
-          <div className="shrink-0 px-2 py-2">
-            <div className="flex items-center gap-3">
-              <div
-                className="flex items-center justify-center shrink-0 rounded-full"
-                style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)' }}
-              >
-                <span className="text-[12px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-[20px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-[13px] text-white/80">{selectedCity.country}</h2>
-                  {localTime && <span className="text-[11px] text-white/40">{localTime}</span>}
+            {/* Banner */}
+            <div className="px-2 py-2">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex items-center justify-center shrink-0 rounded-full"
+                  style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)' }}
+                >
+                  <span className="text-[12px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-[20px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[13px] text-white/80">{selectedCity.country}</h2>
+                    {localTime && <span className="text-[11px] text-white/40">{localTime}</span>}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </button>
 
           {/* Station list — scrollable */}
           {drawerOpen && (
