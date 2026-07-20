@@ -93,6 +93,8 @@ export default function Globe() {
     m.on('mousedown', stopRotation);
     m.on('touchstart', stopRotation);
     m.on('dragstart', stopRotation);
+    m.on('zoomstart', stopRotation);
+    m.on('movestart', stopRotation);
 
     m.on('load', () => {
       try { m.setProjection({ type: 'globe' }); } catch {}
@@ -102,8 +104,7 @@ export default function Globe() {
         const rotate = () => {
           if (!rotationActiveRef.current || !mapRef.current) return;
           const c = mapRef.current.getCenter();
-          c.lng -= 0.02;
-          mapRef.current.setCenter(c);
+          mapRef.current.setCenter([c.lng - 0.02, c.lat]);
           rotationRef.current = requestAnimationFrame(rotate);
         };
         rotationRef.current = requestAnimationFrame(rotate);
