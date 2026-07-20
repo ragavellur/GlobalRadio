@@ -14,7 +14,7 @@ export default function Globe() {
   const citiesRef = useRef<City[]>([]);
   const rotationRef = useRef<number | null>(null);
   const rotationActiveRef = useRef(false);
-  const { setCities, setIndexLoaded, selectCity, selectedCity } = useRadioStore();
+  const { setCities, setIndexLoaded, selectCity } = useRadioStore();
 
   const handleCityClick = useCallback((city: City) => {
     if (!city || !mapRef.current) return;
@@ -27,6 +27,9 @@ export default function Globe() {
 
     selectCity(city);
     highlightCity(mapRef.current, city.cityId);
+    if (window.innerWidth < 640) {
+      mapRef.current.setPadding({ bottom: 140, top: 0, left: 0, right: 0 });
+    }
     mapRef.current.flyTo({
       center: [city.lon, city.lat],
       zoom: 7,
@@ -171,16 +174,6 @@ export default function Globe() {
       delete (window as any).__playNearestCity;
     };
   }, []);
-
-  useEffect(() => {
-    const m = mapRef.current;
-    if (!m) return;
-    if (selectedCity && window.innerWidth < 640) {
-      m.setPadding({ bottom: 140, top: 0, left: 0, right: 0 });
-    } else {
-      m.setPadding({ bottom: 0, top: 0, left: 0, right: 0 });
-    }
-  }, [selectedCity]);
 
   const loadCityIndex = async (m: maplibregl.Map) => {
     try {
