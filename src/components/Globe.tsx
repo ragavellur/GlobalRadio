@@ -27,11 +27,9 @@ export default function Globe() {
 
     selectCity(city);
     highlightCity(mapRef.current, city.cityId);
-    mapRef.current.setPadding({ bottom: 260, top: 0, left: 0, right: 0 });
     mapRef.current.flyTo({
       center: [city.lon, city.lat],
       zoom: 7,
-      pitch: 45,
       bearing: Math.random() * 30 - 15,
       duration: 2000,
     });
@@ -173,13 +171,6 @@ export default function Globe() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-    if (!selectedCity) {
-      mapRef.current.setPadding({ bottom: 0, top: 0, left: 0, right: 0 });
-    }
-  }, [selectedCity]);
-
   const loadCityIndex = async (m: maplibregl.Map) => {
     try {
       const response = await fetch('/data/index.json');
@@ -202,7 +193,10 @@ export default function Globe() {
     <div
       ref={mapContainer}
       className="absolute inset-0 w-full h-full"
-      style={{ background: '#000' }}
+      style={{
+        background: '#000',
+        transform: selectedCity ? 'translateY(-130px)' : undefined,
+      }}
     />
   );
 }
