@@ -98,8 +98,7 @@ export default function Globe() {
       try { m.setProjection({ type: 'globe' }); } catch {}
       loadCityIndex(m);
 
-      setTimeout(() => {
-        rotationActiveRef.current = true;
+      rotationActiveRef.current = true;
         const rotate = () => {
           if (!rotationActiveRef.current || !mapRef.current) return;
           const c = mapRef.current.getCenter();
@@ -108,7 +107,6 @@ export default function Globe() {
           rotationRef.current = requestAnimationFrame(rotate);
         };
         rotationRef.current = requestAnimationFrame(rotate);
-      }, 5000);
     });
 
     m.on('click', (e: maplibregl.MapMouseEvent) => {
