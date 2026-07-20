@@ -130,20 +130,20 @@ export default function BottomPanel() {
 
       {/* === Mobile panel (bottom sheet) === */}
       <div className="flex flex-col sm:hidden fixed inset-x-0 bottom-0 z-10 pointer-events-none" style={{ maxHeight: '100dvh', overflow: 'hidden' }}>
-        {/* Mobile drawer — slides up from bottom */}
-        <MobileDrawer
-          selectedCity={selectedCity}
-          stations={stations}
-          loadingStations={loadingStations}
-          drawerOpen={drawerOpen}
-          currentStation={currentStation}
-          localTime={localTime}
-          handleToggleDrawer={handleToggleDrawer}
-          playStation={playStation}
-          hasPlayer={!!currentStation}
-        />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <MobileDrawer
+            selectedCity={selectedCity}
+            stations={stations}
+            loadingStations={loadingStations}
+            drawerOpen={drawerOpen}
+            currentStation={currentStation}
+            localTime={localTime}
+            handleToggleDrawer={handleToggleDrawer}
+            playStation={playStation}
+            hasPlayer={!!currentStation}
+          />
+        </div>
 
-        {/* Now playing bar — mobile, always visible when station selected */}
         {currentStation && (
           <MobileNowPlaying
             currentStation={currentStation}
@@ -217,7 +217,7 @@ function DrawerContent({
 
             {/* Station list — scrollable */}
             {drawerOpen && (
-              <div className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+              <div className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(100dvh - 250px)' }}>
                 {stations.length > 0 && (
                   <div style={{ background: 'rgba(25,25,25,0.95)', borderRadius: 8 }}>
                     <div className="p-3 pb-1">
@@ -435,7 +435,7 @@ function MobileDrawer({
   playStation: (s: Station) => void;
   hasPlayer: boolean;
 }) {
-  const maxH = hasPlayer ? 'calc(50vh - 60px)' : '50vh';
+  const maxH = hasPlayer ? 'calc(50dvh - 60px)' : '50dvh';
 
   return (
     <div
