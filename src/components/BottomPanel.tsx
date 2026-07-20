@@ -129,22 +129,25 @@ export default function BottomPanel() {
       </div>
 
       {/* === Mobile panel (bottom sheet) === */}
-      <div className="flex flex-col sm:hidden fixed inset-x-0 bottom-0 z-10 pointer-events-none" style={{ maxHeight: '100dvh', overflow: 'hidden' }}>
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <MobileDrawer
-            selectedCity={selectedCity}
-            stations={stations}
-            loadingStations={loadingStations}
-            drawerOpen={drawerOpen}
-            currentStation={currentStation}
-            localTime={localTime}
-            handleToggleDrawer={handleToggleDrawer}
-            playStation={playStation}
-            hasPlayer={!!currentStation}
-          />
-        </div>
+      <div
+        className="sm:hidden fixed inset-x-0 z-10 pointer-events-none"
+        style={{ bottom: currentStation ? 90 : 0, maxHeight: currentStation ? 'calc(100dvh - 90px)' : '100dvh', overflow: 'hidden' }}
+      >
+        <MobileDrawer
+          selectedCity={selectedCity}
+          stations={stations}
+          loadingStations={loadingStations}
+          drawerOpen={drawerOpen}
+          currentStation={currentStation}
+          localTime={localTime}
+          handleToggleDrawer={handleToggleDrawer}
+          playStation={playStation}
+          hasPlayer={!!currentStation}
+        />
+      </div>
 
-        {currentStation && (
+      {currentStation && (
+        <div className="sm:hidden fixed inset-x-0 bottom-0 z-20 pointer-events-auto">
           <MobileNowPlaying
             currentStation={currentStation}
             selectedCity={selectedCity}
@@ -154,8 +157,8 @@ export default function BottomPanel() {
             stations={stations}
             togglePlayback={togglePlayback}
           />
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }
