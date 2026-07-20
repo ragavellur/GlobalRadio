@@ -3,7 +3,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useRadioStore } from '../lib/store';
 import { buildSpatialIndex, findNearestCityFromPoint } from '../lib/spatialIndex';
-import { addDotLayer } from '../lib/dotRenderer';
+import { addDotLayer, highlightCity } from '../lib/dotRenderer';
 import { initSearch } from '../lib/search';
 import { transformCities } from '../lib/transform';
 import type { City } from '../types';
@@ -17,6 +17,7 @@ export default function Globe() {
   const handleCityClick = useCallback((city: City) => {
     if (!city || !mapRef.current) return;
     selectCity(city);
+    highlightCity(mapRef.current, city.cityId);
     mapRef.current.flyTo({
       center: [city.lon, city.lat],
       zoom: 5,
@@ -33,12 +34,26 @@ export default function Globe() {
       container: mapContainer.current,
       style: {
         version: 8,
-        sources: {},
+        sources: {
+          'satellite': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution: 'Esri, Maxar, Earthstar Geographics',
+          },
+        },
         layers: [
           {
-            id: 'bg',
-            type: 'background',
-            paint: { 'background-color': '#191919' },
+            id: 'satellite-layer',
+            type: 'raster',
+            source: 'satellite',
+            paint: {
+              'raster-brightness-max': 0.65,
+              'raster-contrast': 0.1,
+              'raster-saturation': -0.2,
+            },
           },
         ],
       },
@@ -60,7 +75,15 @@ export default function Globe() {
       if (city) handleCityClick(city);
     });
 
-    return () => { m.remove(); mapRef.current = null; };
+    (window as any).__flyToCity = (city: City) => {
+      handleCityClick(city);
+    };
+
+    return () => {
+      m.remove();
+      mapRef.current = null;
+      delete (window as any).__flyToCity;
+    };
   }, []);
 
   const loadCityIndex = async (m: maplibregl.Map) => {
@@ -85,7 +108,7 @@ export default function Globe() {
     <div
       ref={mapContainer}
       className="absolute inset-0 w-full h-full"
-      style={{ background: '#191919' }}
+      style={{ background: '#000' }}
     />
   );
 }

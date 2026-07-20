@@ -6,6 +6,7 @@ interface RadioStore extends RadioState {
   setIndexLoaded: (loaded: boolean) => void;
   selectCity: (city: City | null) => void;
   playStation: (station: Station) => void;
+  pausePlayback: () => void;
   stopPlayback: () => void;
   setVolume: (volume: number) => void;
   setSearchQuery: (query: string) => void;
@@ -50,6 +51,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, currentStation: null, isPlaying: false }));
   }, []);
 
+  const pausePlayback = useCallback(() => {
+    setState((prev) => ({ ...prev, isPlaying: false }));
+  }, []);
+
   const setVolume = useCallback((volume: number) => {
     setState((prev) => ({ ...prev, audioVolume: volume }));
   }, []);
@@ -78,6 +83,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setIndexLoaded,
         selectCity,
         playStation,
+        pausePlayback,
         stopPlayback,
         setVolume,
         setSearchQuery,

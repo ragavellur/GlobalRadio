@@ -26,6 +26,10 @@ export default function SearchPanel() {
     setResults([]);
     setIsOpen(false);
     inputRef.current?.blur();
+
+    if ((window as any).__flyToCity) {
+      (window as any).__flyToCity(city);
+    }
   };
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import type { Map as MaplibreMap } from 'maplibre-gl';
 
 const SOURCE_ID = 'radio-cities';
 const LAYER_ID = 'radio-dots';
+const SELECTED_RING_LAYER_ID = 'radio-dots-selected-ring';
 
 export function addDotLayer(map: MaplibreMap, cities: City[]) {
   const features = cities.map((city) => ({
@@ -41,20 +42,33 @@ export function addDotLayer(map: MaplibreMap, cities: City[]) {
       'circle-color': '#00C864',
       'circle-opacity': 0.85,
       'circle-blur': 0.3,
-      'circle-stroke-width': 0,
+      'circle-stroke-width': [
+        'case',
+        ['==', ['get', 'cityId'], -999],
+        2,
+        0,
+      ],
+      'circle-stroke-color': '#ffffff',
     },
   });
 }
 
 export function highlightCity(map: MaplibreMap, cityId: number | null) {
+  if (!map.getLayer(LAYER_ID)) return;
+
   if (cityId !== null) {
-    map.setPaintProperty(LAYER_ID, 'circle-color', [
+    map.setPaintProperty(LAYER_ID, 'circle-stroke-width', [
       'case',
       ['==', ['get', 'cityId'], cityId],
-      '#ffffff',
-      '#00C864',
+      3,
+      0,
     ]);
   } else {
-    map.setPaintProperty(LAYER_ID, 'circle-color', '#00C864');
+    map.setPaintProperty(LAYER_ID, 'circle-stroke-width', [
+      'case',
+      ['==', ['get', 'cityId'], -999],
+      2,
+      0,
+    ]);
   }
 }

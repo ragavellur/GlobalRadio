@@ -32,8 +32,8 @@ export default function GlobeControls() {
       {/* Zoom in */}
       <button className="w-[36px] h-[40px] flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" title="Zoom in"
         onClick={() => {
-          const mapEl = document.querySelector('.maplibregl-map') as any;
-          if (mapEl?.__maplibregl) mapEl.__maplibregl.zoomIn();
+          const m = (window as any).__map;
+          if (m) m.zoomIn();
         }}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
@@ -45,8 +45,8 @@ export default function GlobeControls() {
       {/* Zoom out */}
       <button className="w-[36px] h-[40px] flex items-center justify-center rounded-full hover:bg-white/10 transition-colors" title="Zoom out"
         onClick={() => {
-          const mapEl = document.querySelector('.maplibregl-map') as any;
-          if (mapEl?.__maplibregl) mapEl.__maplibregl.zoomOut();
+          const m = (window as any).__map;
+          if (m) m.zoomOut();
         }}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
