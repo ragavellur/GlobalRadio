@@ -4,6 +4,7 @@ import SearchPanel from './components/SearchPanel';
 import BottomPanel from './components/BottomPanel';
 
 import LoadingIndicator from './components/LoadingIndicator';
+import InstallPrompt from './components/InstallPrompt';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
 
@@ -58,6 +59,7 @@ function AppContent() {
       <BottomPanel />
       <SearchPanel />
       <IntroPlayButton />
+      <InstallPrompt />
     </div>
   );
 }
