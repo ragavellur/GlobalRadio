@@ -1,0 +1,16 @@
+<svg aria-labelledby="title" viewBox="0 0 512 512" height="512" width="512" xmlns="http://www.w3.org/2000/svg">
+  <title>Global Radio - Master App Icon</title>
+  <circle fill="#FF9933" cx="256" cy="256" r="245"></circle>
+  <circle fill="#FFFFFF" cx="256" cy="256" r="205"></circle>
+  <circle fill="#138808" cx="256" cy="256" r="185"></circle>
+  <path stroke-linecap="round" stroke-width="9" stroke="#FFFFFF" fill="transparent" d="M 145 240 C 118 225 115 200 145 175"></path>
+  <path stroke-linecap="round" stroke-width="7.5" stroke="#FFFFFF" fill="transparent" d="M 168 245 C 150 230 148 205 170 185"></path>
+  <path stroke-linecap="round" stroke-width="9" stroke="#FFFFFF" fill="transparent" d="M 367 240 C 394 225 397 200 367 175"></path>
+  <path stroke-linecap="round" stroke-width="7.5" stroke="#FFFFFF" fill="transparent" d="M 344 245 C 362 230 364 205 342 185"></path>
+  <rect fill="#FFFFFF" ry="36.5" rx="36.5" height="165" width="113" y="137" x="199.5"></rect>
+  <rect fill="#138808" rx="2" height="6" width="90" y="155" x="211"></rect>
+  <rect fill="#138808" rx="2" height="6" width="90" y="175" x="211"></rect>
+  <rect fill="#138808" rx="2" height="6" width="90" y="195" x="211"></rect>
+  <rect fill="#FFFFFF" rx="2.5" height="54" width="13" y="300" x="249.5"></rect>
+  <rect fill="#FFFFFF" rx="3" height="13.5" width="71" y="352" x="220.5"></rect>
+</svg>
