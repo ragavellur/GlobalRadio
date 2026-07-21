@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRadioStore } from '../lib/store';
 import { searchCities } from '../lib/search';
+import InstallPrompt from './InstallPrompt';
 
 export default function SearchPanel() {
   const { selectCity } = useRadioStore();
@@ -62,6 +63,9 @@ export default function SearchPanel() {
           className="w-full sm:w-[280px] px-4 py-2 rounded-full text-[14px] text-white placeholder-white/40 outline-none transition-all sm:focus:w-[340px]"
           style={{ background: 'rgba(25,25,25,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}
         />
+        <div className="flex justify-center mt-1">
+          <InstallPrompt />
+        </div>
       </div>
 
       {/* Results dropdown */}
