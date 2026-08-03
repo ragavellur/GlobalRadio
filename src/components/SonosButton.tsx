@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRadioStore } from '../lib/store';
 import {
   SONOS_ENABLED,
@@ -23,7 +24,10 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [busyGroup, setBusyGroup] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [popupPos, setPopupPos] = useState<{ right: number; bottom: number } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const active = getActiveSonos();
@@ -32,10 +36,17 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const inRoot = rootRef.current?.contains(e.target as Node);
+      const inPopup = popupRef.current?.contains(e.target as Node);
+      if (!inRoot && !inPopup) setOpen(false);
     };
+    const onScroll = () => setOpen(false);
     document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      window.removeEventListener('scroll', onScroll, true);
+    };
   }, []);
 
   const loadGroups = useCallback(async () => {
@@ -55,7 +66,16 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
   const handleToggle = useCallback(() => {
     const next = !open;
     setOpen(next);
-    if (next && connected) void loadGroups();
+    if (next) {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (rect) {
+        setPopupPos({
+          right: window.innerWidth - rect.right,
+          bottom: window.innerHeight - rect.top + 8,
+        });
+      }
+      if (connected) void loadGroups();
+    }
   }, [open, connected, loadGroups]);
 
   const handleConnect = useCallback(async () => {
@@ -120,6 +140,7 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
   return (
     <div ref={rootRef} className="relative" style={{ display: 'inline-block' }}>
       <button
+        ref={buttonRef}
         onClick={handleToggle}
         aria-label={active ? `Streaming on Sonos (${active}). Manage.` : 'Play on Sonos'}
         title={active ? `Streaming on ${active}` : 'Play on Sonos'}
@@ -143,18 +164,21 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
         </svg>
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setOpen(false)} />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 8px)',
-              right: 0,
-              zIndex: 41,
-              width: 272,
-              maxHeight: 320,
-              overflowY: 'auto',
+      {open &&
+        popupPos &&
+        createPortal(
+          <>
+            <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setOpen(false)} />
+            <div
+              ref={popupRef}
+              style={{
+                position: 'fixed',
+                right: popupPos.right,
+                bottom: popupPos.bottom,
+                zIndex: 41,
+                width: 272,
+                maxHeight: 320,
+                overflowY: 'auto',
               background: '#202020',
               border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 10,
@@ -247,9 +271,10 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
                 </button>
               )}
             </div>
-          </div>
-        </>
-      )}
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
