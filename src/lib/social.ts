@@ -144,6 +144,43 @@ export async function fetchLiveStations(): Promise<LiveStation[]> {
 }
 
 // ============================================================================
+// User directory
+// ============================================================================
+export interface UserDirectoryEntry {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  online: boolean;
+  country: string | null;
+  city: string | null;
+  station_url: string | null;
+  station_name: string | null;
+  last_active_at: string | null;
+}
+
+export interface DirectoryScope {
+  country?: string;
+  cityKey?: string;
+  stationUrl?: string;
+}
+
+export async function fetchUserDirectory(
+  scope: DirectoryScope = {}
+): Promise<UserDirectoryEntry[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc('get_user_directory', {
+    p_country: scope.country ?? null,
+    p_city_key: scope.cityKey ?? null,
+    p_station_url: scope.stationUrl ?? null,
+  });
+  if (error || !data) {
+    console.error('fetchUserDirectory failed:', error?.message ?? 'no data');
+    return [];
+  }
+  return (data as UserDirectoryEntry[]) ?? [];
+}
+
+// ============================================================================
 // Room (group) chat
 // ============================================================================
 export interface SenderProfile {

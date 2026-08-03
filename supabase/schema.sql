@@ -38,6 +38,12 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default '',
   avatar_url text,
+  country text,
+  city text,
+  city_key text,
+  station_url text,
+  station_name text,
+  last_active_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -115,6 +121,42 @@ create policy "presence update" on public.presence
     or (user_id = auth.uid())
   );
 
+-- Keep each signed-in user's last-known location & station fresh from presence.
+create or replace function public.profile_geo_from_presence()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.user_id is not null then
+    update public.profiles
+    set country = new.country,
+        city = new.city,
+        city_key = new.city_key,
+        station_url = new.station_url,
+        station_name = new.station_name,
+        last_active_at = new.last_seen,
+        updated_at = now()
+    where id = new.user_id
+      and (
+        country is distinct from new.country
+        or city is distinct from new.city
+        or city_key is distinct from new.city_key
+        or station_url is distinct from new.station_url
+        or station_name is distinct from new.station_name
+        or last_active_at is null
+        or new.last_seen - last_active_at > interval '5 minutes'
+      );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists presence_geo on public.presence;
+create trigger presence_geo
+  after insert or update on public.presence
+  for each row execute function public.profile_geo_from_presence();
+
 -- Live stations rollup: stations with at least one active listener
 create or replace function public.get_live_stations()
 returns table (
@@ -141,6 +183,56 @@ as $$
 $$;
 
 grant execute on function public.get_live_stations() to anon, authenticated;
+
+-- ============================================================================
+-- USER DIRECTORY
+-- All signed-up users with their last-known location/station and live status.
+-- Scoped by country (code), city_key ("City,CC") or station_url when provided.
+-- ============================================================================
+create or replace function public.get_user_directory(
+  p_country text default null,
+  p_city_key text default null,
+  p_station_url text default null
+)
+returns table (
+  user_id uuid,
+  display_name text,
+  avatar_url text,
+  online boolean,
+  country text,
+  city text,
+  station_url text,
+  station_name text,
+  last_active_at timestamptz
+)
+language sql stable
+security definer set search_path = public
+as $$
+  select
+    p.id as user_id,
+    p.display_name,
+    p.avatar_url,
+    exists (
+      select 1 from public.presence pr
+      where pr.user_id = p.id
+        and pr.last_seen > now() - interval '30 seconds'
+    ) as online,
+    p.country,
+    p.city,
+    p.station_url,
+    p.station_name,
+    p.last_active_at
+  from public.profiles p
+  where
+    (p_country is null or p.country = p_country)
+    and (p_city_key is null or p.city_key = p_city_key)
+    and (p_station_url is null or p.station_url = p_station_url)
+  order by (p.last_active_at is not null) desc, p.last_active_at desc nulls last, p.display_name asc
+  limit 1000;
+$$;
+
+revoke all on function public.get_user_directory(text, text, text) from public;
+grant execute on function public.get_user_directory(text, text, text) to anon, authenticated;
 
 -- ============================================================================
 -- ROOM MESSAGES

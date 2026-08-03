@@ -6,11 +6,14 @@ import { SUPABASE_ENABLED } from '../lib/supabase';
 import { useRoomChat } from '../hooks/useRoomChat';
 import { useDMs } from '../hooks/useDMs';
 import { useListenerCounts } from '../hooks/useListenerCounts';
+import { useUserDirectory } from '../hooks/useUserDirectory';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
-import type { Listener, RoomMessage, DirectMessage, Conversation } from '../lib/social';
+import { countryName } from '../lib/countryNames';
+import type { Listener, RoomMessage, DirectMessage, Conversation, UserDirectoryEntry } from '../lib/social';
+import type { City } from '../types';
 import SlidePanel from './SlidePanel';
 
-type Tab = 'chat' | 'listeners' | 'dm';
+type Tab = 'chat' | 'listeners' | 'users' | 'dm';
 
 export default function SocialPanel() {
   if (!SUPABASE_ENABLED) return null;
@@ -114,6 +117,7 @@ function SocialPanelInner() {
             [
               ['chat', 'Chat'],
               ['listeners', 'Listeners'],
+              ['users', 'Users'],
               ['dm', 'DMs'],
             ] as [Tab, string][]
           ).map(([key, label]) => (
@@ -162,6 +166,16 @@ function SocialPanelInner() {
             counts={counts}
             meId={user?.id ?? null}
             onDm={startDmTo}
+          />
+        )}
+
+        {tab === 'users' && (
+          <UsersView
+            city={city}
+            station={station}
+            meId={user?.id ?? null}
+            onDm={startDmTo}
+            onRequireSignIn={() => openSignInDialog()}
           />
         )}
 
@@ -437,6 +451,133 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 
 function EmptyNote({ text }: { text: string }) {
   return <div className="text-[13px] text-white/35 py-2">{text}</div>;
+}
+
+/* ============================================================================
+   Users (directory)
+   ============================================================================ */
+type UsersScope = 'all' | 'country' | 'city' | 'station';
+
+function UsersView({
+  city,
+  station,
+  meId,
+  onDm,
+  onRequireSignIn,
+}: {
+  city: City | null;
+  station: { name: string; url: string } | null;
+  meId: string | null;
+  onDm: (peerId: string) => void;
+  onRequireSignIn: () => void;
+}) {
+  const [scope, setScope] = useState<UsersScope>('all');
+
+  const directoryScope = useMemo(() => {
+    if (scope === 'country' && city) return { country: city.country };
+    if (scope === 'city' && city) return { cityKey: cityKeyOf(city) };
+    if (scope === 'station' && station) return { stationUrl: station.url };
+    return {};
+  }, [scope, city, station]);
+
+  const users = useUserDirectory(true, directoryScope);
+
+  const chips: { key: UsersScope; label: string }[] = [
+    { key: 'all', label: 'All' },
+    ...(city ? [{ key: 'country' as const, label: countryName(city.country) }] : []),
+    ...(city ? [{ key: 'city' as const, label: city.city }] : []),
+    ...(station ? [{ key: 'station' as const, label: station.name }] : []),
+  ];
+
+  return (
+    <div className="px-3 py-2">
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {chips.map((c) => (
+          <button
+            key={c.key}
+            onClick={() => setScope(c.key)}
+            className="rounded-full px-3 py-1.5 text-[12px] font-medium"
+            style={{
+              cursor: 'pointer',
+              border: 'none',
+              background: scope === c.key ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.08)',
+              color: scope === c.key ? '#00C864' : 'rgba(255,255,255,0.6)',
+            }}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {users.length === 0 ? (
+        <div className="text-[13px] text-white/35 py-4 text-center">
+          No users found{scope !== 'all' ? ' in this area' : ''}.
+        </div>
+      ) : (
+        <div className="mb-2 text-[11px] text-white/40">
+          {users.length} user{users.length === 1 ? '' : 's'}
+        </div>
+      )}
+      {users.map((u) => (
+        <UserRow key={u.user_id} user={u} meId={meId} onDm={onDm} onRequireSignIn={onRequireSignIn} />
+      ))}
+    </div>
+  );
+}
+
+function UserRow({
+  user,
+  meId,
+  onDm,
+  onRequireSignIn,
+}: {
+  user: UserDirectoryEntry;
+  meId: string | null;
+  onDm: (peerId: string) => void;
+  onRequireSignIn: () => void;
+}) {
+  const isSelf = user.user_id === meId;
+
+  let status: string;
+  if (user.online) {
+    status = user.station_name
+      ? `Listening to ${user.station_name}${user.city ? ` · ${user.city}${user.country ? `, ${user.country}` : ''}` : ''}`
+      : 'Online';
+  } else if (user.station_name) {
+    status = `Last on ${user.station_name}`;
+  } else if (user.last_active_at) {
+    status = `Last active ${timeAgo(user.last_active_at)}`;
+  } else {
+    status = 'No activity yet';
+  }
+
+  return (
+    <div className="flex items-center gap-2 py-2 rounded-lg hover:bg-white/5 transition-colors px-1">
+      <Avatar url={user.avatar_url} name={user.display_name} size={26} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 text-[13px] text-white truncate">
+          {user.display_name || 'Radio listener'}
+          {user.online && (
+            <span
+              className="rounded-full shrink-0"
+              style={{ width: 7, height: 7, background: '#00C864' }}
+              title="Online now"
+            />
+          )}
+        </div>
+        <div className="text-[11px] text-white/40 truncate">{status}</div>
+      </div>
+      {!isSelf && (
+        <button
+          onClick={() => (meId ? onDm(user.user_id) : onRequireSignIn())}
+          className="rounded-full px-3 py-1 text-[11px] font-medium shrink-0 transition-colors"
+          style={{ background: 'rgba(0,200,100,0.15)', color: '#00C864', cursor: 'pointer', border: 'none' }}
+        >
+          Message
+        </button>
+      )}
+    </div>
+  );
 }
 
 /* ============================================================================
