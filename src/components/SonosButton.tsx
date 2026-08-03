@@ -1,0 +1,255 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRadioStore } from '../lib/store';
+import {
+  SONOS_ENABLED,
+  connect,
+  disconnect,
+  getGroups,
+  playStream,
+  pauseGroup,
+  isConnected,
+  setActiveSonos,
+  getActiveSonos,
+  clearActiveSonos,
+  type SonosGroup,
+} from '../lib/sonos';
+
+export default function SonosButton({ size = 18 }: { size?: number }) {
+  const { currentStation, pausePlayback, sonosStreaming, setSonosStreaming } = useRadioStore();
+  const [open, setOpen] = useState(false);
+  const [connected, setConnected] = useState(isConnected());
+  const [connecting, setConnecting] = useState(false);
+  const [groups, setGroups] = useState<SonosGroup[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [busyGroup, setBusyGroup] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const active = getActiveSonos();
+    if (active?.name && !sonosStreaming) setSonosStreaming(active.name);
+  }, [sonosStreaming, setSonosStreaming]);
+
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const loadGroups = useCallback(async () => {
+    setLoadingGroups(true);
+    setError(null);
+    try {
+      setGroups(await getGroups());
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to load Sonos speakers';
+      setError(msg);
+      if (/not connected|session expired|expired/i.test(msg)) setConnected(false);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    const next = !open;
+    setOpen(next);
+    if (next && connected) void loadGroups();
+  }, [open, connected, loadGroups]);
+
+  const handleConnect = useCallback(async () => {
+    setConnecting(true);
+    setError(null);
+    try {
+      await connect();
+      setConnected(true);
+      void loadGroups();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Connection failed');
+    } finally {
+      setConnecting(false);
+    }
+  }, [loadGroups]);
+
+  const handleHandoff = useCallback(
+    async (group: SonosGroup) => {
+      if (!currentStation) return;
+      setBusyGroup(group.id);
+      setError(null);
+      try {
+        await playStream(group.id, currentStation.url, currentStation.name);
+        setActiveSonos({ id: group.id, name: group.name });
+        pausePlayback();
+        setSonosStreaming(group.name);
+        setOpen(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Playback failed on Sonos');
+      } finally {
+        setBusyGroup(null);
+      }
+    },
+    [currentStation, pausePlayback, setSonosStreaming]
+  );
+
+  const handleStop = useCallback(async () => {
+    setError(null);
+    try {
+      const active = getActiveSonos();
+      if (active?.id) await pauseGroup(active.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to stop Sonos');
+    }
+    clearActiveSonos();
+    setSonosStreaming(null);
+    setOpen(false);
+  }, [setSonosStreaming]);
+
+  const handleDisconnect = useCallback(() => {
+    disconnect();
+    setConnected(false);
+    setGroups([]);
+    setSonosStreaming(null);
+    setOpen(false);
+  }, [setSonosStreaming]);
+
+  if (!SONOS_ENABLED) return null;
+
+  const active = sonosStreaming;
+
+  return (
+    <div ref={rootRef} className="relative" style={{ display: 'inline-block' }}>
+      <button
+        onClick={handleToggle}
+        aria-label={active ? `Streaming on Sonos (${active}). Manage.` : 'Play on Sonos'}
+        title={active ? `Streaming on ${active}` : 'Play on Sonos'}
+        className="flex items-center justify-center shrink-0 rounded-full transition-colors hover:bg-white/10"
+        style={{
+          width: size + 12,
+          height: size + 12,
+          background: active ? 'rgba(0,200,100,0.25)' : 'rgba(0,200,100,0.12)',
+          border: `1px solid ${active ? '#00C864' : 'rgba(0,200,100,0.35)'}`,
+          cursor: 'pointer',
+        }}
+      >
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 10v4h3l4 4V6L5 10H2z" />
+          {active && (
+            <>
+              <path d="M15 8a5 5 0 0 1 0 8" />
+              <path d="M17.5 5.5a9 9 0 0 1 0 13" />
+            </>
+          )}
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setOpen(false)} />
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 8px)',
+              right: 0,
+              zIndex: 41,
+              width: 272,
+              maxHeight: 320,
+              overflowY: 'auto',
+              background: '#202020',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10,
+              padding: 12,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.55)',
+              color: '#fff',
+              fontFamily: 'inherit',
+            }}
+          >
+            <div className="text-[13px] font-semibold mb-2" style={{ color: '#00C864' }}>
+              Play on Sonos
+            </div>
+
+            {error && (
+              <div className="text-[12px] mb-2" style={{ color: '#ff5555' }}>{error}</div>
+            )}
+
+            {!connected && (
+              <button
+                onClick={() => void handleConnect()}
+                disabled={connecting}
+                className="w-full rounded-lg text-[13px] font-medium py-2 transition-colors"
+                style={{
+                  background: '#00C864',
+                  color: '#0a0a0a',
+                  cursor: connecting ? 'wait' : 'pointer',
+                  opacity: connecting ? 0.6 : 1,
+                }}
+              >
+                {connecting ? 'Opening Sonos sign-in…' : 'Connect Sonos'}
+              </button>
+            )}
+
+            {connected && (
+              <>
+                {loadingGroups && (
+                  <div className="text-[12px] text-white/60 py-2">Finding your Sonos speakers…</div>
+                )}
+                {!loadingGroups && groups.length === 0 && (
+                  <div className="text-[12px] text-white/60 py-2">No Sonos speakers found on this account.</div>
+                )}
+                {groups.map((g) => (
+                  <div key={g.id} className="flex items-center gap-2 py-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] truncate">{g.name}</div>
+                      <div className="text-[11px]" style={{ color: active === g.name ? '#00C864' : 'rgba(255,255,255,0.4)' }}>
+                        {active === g.name ? 'Streaming here' : 'Sonos'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => void handleHandoff(g)}
+                      disabled={!!busyGroup || !currentStation}
+                      className="text-[12px] font-medium rounded-full px-3 py-1 transition-colors"
+                      style={{
+                        background: active === g.name ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.1)',
+                        color: active === g.name ? '#00C864' : '#fff',
+                        cursor: !currentStation || busyGroup ? 'not-allowed' : 'pointer',
+                        opacity: !currentStation || busyGroup ? 0.5 : 1,
+                        border: 'none',
+                      }}
+                    >
+                      {busyGroup === g.id ? '…' : active === g.name ? 'Playing' : 'Play here'}
+                    </button>
+                  </div>
+                ))}
+
+                {!currentStation && (
+                  <div className="text-[11px] text-white/40 mt-2">Pick a station first, then send it to a speaker.</div>
+                )}
+              </>
+            )}
+
+            <div className="flex items-center justify-between mt-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              {connected && (
+                <button
+                  onClick={handleDisconnect}
+                  className="text-[12px] transition-colors"
+                  style={{ color: 'rgba(255,255,255,0.5)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Disconnect
+                </button>
+              )}
+              {active && (
+                <button
+                  onClick={() => void handleStop()}
+                  className="text-[12px] font-medium rounded-full px-3 py-1"
+                  style={{ background: 'rgba(255,85,85,0.15)', color: '#ff5555', border: '1px solid rgba(255,85,85,0.4)', cursor: 'pointer' }}
+                >
+                  Stop on Sonos
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

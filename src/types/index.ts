@@ -53,6 +53,7 @@ export interface RadioState {
   pendingStationUrl: string | null;
   socialOpen: boolean;
   socialRoom: SocialRoom | null;
+  sonosStreaming: string | null;
 }
 
 export type TabName = 'search' | 'browse' | 'station';

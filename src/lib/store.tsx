@@ -17,6 +17,7 @@ interface RadioStore extends RadioState {
   openSocial: () => void;
   openSocialRoom: (room: SocialRoom) => void;
   closeSocial: () => void;
+  setSonosStreaming: (groupName: string | null) => void;
 }
 
 const RadioContext = createContext<RadioStore | null>(null);
@@ -36,6 +37,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     pendingStationUrl: null,
     socialOpen: false,
     socialRoom: null,
+    sonosStreaming: null,
   });
 
   const setCities = useCallback((cities: City[]) => {
@@ -98,6 +100,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, socialOpen: false, socialRoom: null }));
   }, []);
 
+  const setSonosStreaming = useCallback((groupName: string | null) => {
+    setState((prev) => ({ ...prev, sonosStreaming: groupName }));
+  }, []);
+
   return (
     <RadioContext.Provider
       value={{
@@ -117,6 +123,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         openSocial,
         openSocialRoom,
         closeSocial,
+        setSonosStreaming,
       }}
     >
       {children}

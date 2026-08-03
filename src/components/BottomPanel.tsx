@@ -8,6 +8,7 @@ import { useSignInDialog } from './SignInDialog';
 import type { Station, City } from '../types';
 import { useListenerCounts } from '../hooks/useListenerCounts';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
+import SonosButton from './SonosButton';
 
 export default function BottomPanel() {
   const {
@@ -335,6 +336,7 @@ function DrawerContent({
                 {audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
               </div>
             </div>
+            <SonosButton size={18} />
             <button
               onClick={() => toggleFavoriteAction(currentStation, selectedCity)}
               className="ml-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
@@ -432,6 +434,7 @@ function MobileNowPlaying({
           onToggle={() => toggleFavoriteAction(currentStation, selectedCity)}
           size={20}
         />
+        <SonosButton size={15} />
       </div>
       <div className="flex items-center justify-center px-2 pb-2 gap-2">
         <PlayButton
