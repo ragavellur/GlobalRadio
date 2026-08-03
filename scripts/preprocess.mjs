@@ -35,6 +35,51 @@ console.log(`Parsed ${Object.keys(raw).length} cities in ${((performance.now() -
 mkdirSync(OUTPUT_DIR, { recursive: true });
 mkdirSync(STATIONS_DIR, { recursive: true });
 
+// ─── Step 0: Remove runaway stations ────────────────────────────────────
+// The source dump appends ~5 "featured" stations to every city in a country.
+// Drop a station URL from a country when it appears in >=90% of that
+// country's cities (only for countries with >=20 cities).
+const ccCities = {};
+for (const key of Object.keys(raw)) {
+  const cc = key.slice(key.lastIndexOf(',') + 1).trim();
+  if (!ccCities[cc]) ccCities[cc] = [];
+  ccCities[cc].push(key);
+}
+
+const runawayByCc = {};
+for (const [cc, cities] of Object.entries(ccCities)) {
+  if (cities.length < 20) continue;
+  const urlCount = {};
+  for (const key of cities) {
+    for (const s of raw[key].urls || []) {
+      if (s.url) urlCount[s.url] = (urlCount[s.url] || 0) + 1;
+    }
+  }
+  const threshold = cities.length * 0.9;
+  runawayByCc[cc] = new Set(
+    Object.entries(urlCount)
+      .filter(([, n]) => n >= threshold)
+      .map(([url]) => url)
+  );
+}
+
+let runawayStations = 0;
+let runawayEntries = 0;
+for (const key of Object.keys(raw)) {
+  const cc = key.slice(key.lastIndexOf(',') + 1).trim();
+  const runaway = runawayByCc[cc];
+  if (!runaway) continue;
+  const filtered = (raw[key].urls || []).filter((s) => !(s.url && runaway.has(s.url)));
+  if (filtered.length !== raw[key].urls.length) {
+    runawayEntries += raw[key].urls.length - filtered.length;
+    raw[key].urls = filtered;
+  }
+}
+runawayStations = Object.values(runawayByCc).reduce((sum, s) => sum + s.size, 0);
+if (runawayStations > 0) {
+  console.log(`Cleanup: removed ${runawayStations} runaway stations (${runawayEntries} city entries)`);
+}
+
 // ─── Step 1: Build index.json (compact city coords) ─────────────────────
 // Format: [city, countryCode, lat, lon, stationCount]
 const entries = Object.entries(raw);
