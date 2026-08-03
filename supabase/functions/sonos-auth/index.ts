@@ -1,11 +1,14 @@
-// Sonos OAuth helper edge function.
+// Sonos OAuth + Control API proxy edge function.
 //
 // Holds the Sonos client secret (never shipped to the browser) and performs the
-// token exchange / refresh that the GitHub Pages frontend cannot do on its own.
+// token exchange / refresh / API proxying that the GitHub Pages frontend cannot
+// do on its own (the Sonos Control API does not send CORS headers).
 //
 // Routes (all POST, JSON body):
 //   { action: 'token', code, redirect_uri }       -> exchange auth code
 //   { action: 'refresh', refresh_token }          -> refresh access token
+//   { action: 'proxy', access_token, method, path, body }
+//                                                 -> forward to Sonos Control API
 //   POST .../events                               -> 200 {} (Sonos event callback stub)
 //
 // Secrets required: SONOS_CLIENT_ID, SONOS_CLIENT_SECRET
@@ -13,6 +16,7 @@
 const SONOS_CLIENT_ID = Deno.env.get('SONOS_CLIENT_ID') ?? '';
 const SONOS_CLIENT_SECRET = Deno.env.get('SONOS_CLIENT_SECRET') ?? '';
 const TOKEN_URL = 'https://api.sonos.com/login/v3/oauth/access';
+const CONTROL_BASE = 'https://api.ws.sonos.com/control/api/v1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,6 +47,51 @@ async function exchange(params: URLSearchParams): Promise<Record<string, unknown
     throw new Error(detail);
   }
   return body as Record<string, unknown>;
+}
+
+// Sonos Control API requires an X-Sonos-User-Id header; it lives in the user_id
+// claim of the access token JWT.
+function sonosUserId(accessToken: string): string | null {
+  try {
+    const part = accessToken.split('.')[1];
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = new TextDecoder().decode(
+      Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+    );
+    const data = JSON.parse(decoded);
+    return typeof data?.user_id === 'string' ? data.user_id : null;
+  } catch {
+    return null;
+  }
+}
+
+async function controlApi(
+  accessToken: string,
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<{ status: number; body: unknown }> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'X-Sonos-Api-Key': SONOS_CLIENT_ID,
+    'Content-Type': 'application/json',
+  };
+  const userId = sonosUserId(accessToken);
+  if (userId) headers['X-Sonos-User-Id'] = userId;
+
+  const res = await fetch(`${CONTROL_BASE}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  let parsed: unknown = {};
+  try {
+    parsed = text ? JSON.parse(text) : {};
+  } catch {
+    parsed = { raw: text };
+  }
+  return { status: res.status, body: parsed };
 }
 
 Deno.serve(async (req) => {
@@ -88,6 +137,18 @@ Deno.serve(async (req) => {
         })
       );
       return json(body);
+    }
+
+    if (payload.action === 'proxy') {
+      if (!payload.access_token) {
+        return json({ error: 'access_token is required' }, 400);
+      }
+      if (!payload.path || typeof payload.path !== 'string') {
+        return json({ error: 'path is required' }, 400);
+      }
+      const method = typeof payload.method === 'string' ? payload.method.toUpperCase() : 'GET';
+      const result = await controlApi(payload.access_token, method, payload.path, payload.body);
+      return json({ status: result.status, body: result.body });
     }
 
     return json({ error: `unknown action: ${payload.action}` }, 400);

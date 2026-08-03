@@ -5,7 +5,6 @@ export const SONOS_FUNCTION_URL = import.meta.env.VITE_SONOS_FUNCTION_URL as str
 export const SONOS_ENABLED = !!(SONOS_CLIENT_ID && SONOS_REDIRECT_URI && SONOS_FUNCTION_URL);
 
 const AUTH_URL = 'https://api.sonos.com/login/v3/oauth';
-const CONTROL_BASE = 'https://api.ws.sonos.com/control/api/v1';
 
 const TOKEN_KEY = 'globalradio:sonos_tokens';
 const STATE_KEY = 'globalradio:sonos_oauth_state';
@@ -139,42 +138,48 @@ export async function ensureAccessToken(): Promise<string> {
   return body.access_token as string;
 }
 
-/* ============ Sonos Control API ============ */
+/* ============ Sonos Control API (proxied via edge function; no CORS from Sonos) ============ */
 
 async function apiFetch(path: string, init: RequestInit = {}): Promise<any> {
   const token = await ensureAccessToken();
-  const res = await fetch(`${CONTROL_BASE}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'X-Sonos-Api-Key': SONOS_CLIENT_ID!,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
-  });
+  const method = (init.method || 'GET').toUpperCase();
 
-  if (!res.ok) {
-    let message = `Sonos API error (${res.status})`;
-    let code: string | undefined;
+  let body: unknown;
+  if (init.body) {
     try {
-      const body = await res.json();
-      if (body?.errorCode) {
-        code = body.errorCode;
-        message = body.reason || code;
-      }
+      body = JSON.parse(init.body as string);
     } catch {
-      /* non-JSON error body */
+      body = init.body;
     }
-    throw new SonosError(message, code);
   }
 
-  const text = await res.text();
-  if (!text) return {};
+  let res: Response;
   try {
-    return JSON.parse(text);
+    res = await fetch(SONOS_FUNCTION_URL!, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'proxy', access_token: token, method, path, body }),
+    });
   } catch {
-    return {};
+    throw new SonosError('Failed to reach the Sonos bridge. Check your connection.');
   }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new SonosError((data as any)?.error || `Sonos bridge error (${res.status})`);
+  }
+  const status = (data as any)?.status;
+  const payload = (data as any)?.body;
+
+  if (status && status >= 400) {
+    const err = (payload as any) ?? {};
+    throw new SonosError(
+      (err as any)?.errorMessage || (err as any)?.message || (err as any)?.reason || `Sonos API error (${status})`,
+      (err as any)?.errorCode || (err as any)?.code
+    );
+  }
+
+  return payload;
 }
 
 export async function getGroups(): Promise<SonosGroup[]> {
