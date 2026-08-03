@@ -59,6 +59,16 @@
       var sub = document.getElementById('sub');
       var dot = document.getElementById('dot');
 
+      function decodeState(s) {
+        try {
+          var b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+          while (b64.length % 4) b64 += '=';
+          return JSON.parse(atob(b64));
+        } catch (_) {
+          return null;
+        }
+      }
+
       function fail(message) {
         dot.style.background = '#ff5555';
         dot.style.animation = 'none';
@@ -76,14 +86,12 @@
       if (!code) { fail('Missing authorization code.'); return; }
 
       var fn = DEFAULT_FN;
-      try {
-        if (state) {
-          var parsed = JSON.parse(atob(state));
-          if (parsed && typeof parsed.fn === 'string') fn = parsed.fn;
-        }
-      } catch (_) {}
-
       var redirectUri = window.location.origin + window.location.pathname;
+      var parsedState = state ? decodeState(state) : null;
+      if (parsedState) {
+        if (typeof parsedState.fn === 'string') fn = parsedState.fn;
+        if (typeof parsedState.redirectUri === 'string') redirectUri = parsedState.redirectUri;
+      }
 
       fetch(fn, {
         method: 'POST',

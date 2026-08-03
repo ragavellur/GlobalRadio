@@ -70,6 +70,7 @@ export function connect(): Promise<SonosTokens> {
   const stateObj = {
     csrf: Math.random().toString(36).slice(2) + Date.now().toString(36),
     fn: SONOS_FUNCTION_URL,
+    redirectUri: SONOS_REDIRECT_URI,
   };
   const state = btoa(JSON.stringify(stateObj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   sessionStorage.setItem(STATE_KEY, state);
