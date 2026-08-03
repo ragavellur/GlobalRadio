@@ -206,18 +206,19 @@ function DrawerContent({
       >
         {selectedCity && (
           <>
-            {/* Handle — always on top */}
+            {/* Handle + City banner — click anywhere to toggle */}
             <button
               onClick={handleToggleDrawer}
-              className="flex items-center justify-center shrink-0 z-20"
-              style={{ height: 10, cursor: 'pointer', flexShrink: 0 }}
+              className="shrink-0 z-10 text-left"
               aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
+              style={{ cursor: 'pointer' }}
             >
-              <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
-            </button>
+              {/* Handle — always on top */}
+              <div className="flex items-center justify-center" style={{ height: 10 }}>
+                <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
+              </div>
 
-            {/* City banner — transparent like radio.garden */}
-            <div className="shrink-0 z-10">
+              {/* City banner — transparent like radio.garden */}
               <div className="flex items-center gap-3 px-1 py-2">
                 <div
                   className="flex items-center justify-center shrink-0 rounded-full"
@@ -238,7 +239,7 @@ function DrawerContent({
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Station list — scrollable */}
             {drawerOpen && (
