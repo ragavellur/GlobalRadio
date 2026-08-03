@@ -35,10 +35,11 @@ console.log(`Parsed ${Object.keys(raw).length} cities in ${((performance.now() -
 mkdirSync(OUTPUT_DIR, { recursive: true });
 mkdirSync(STATIONS_DIR, { recursive: true });
 
-// ─── Step 0: Remove runaway stations ────────────────────────────────────
+// ─── Step 0: Remove runaway stations (keep each in a home city) ─────────
 // The source dump appends ~5 "featured" stations to every city in a country.
-// Drop a station URL from a country when it appears in >=90% of that
-// country's cities (only for countries with >=20 cities).
+// A station URL is "runaway" when it appears in >=90% of a country's cities
+// (countries with >=20 cities). Such stations are dropped from every city
+// EXCEPT one "home" city, so no real station disappears entirely.
 const ccCities = {};
 for (const key of Object.keys(raw)) {
   const cc = key.slice(key.lastIndexOf(',') + 1).trim();
@@ -63,21 +64,102 @@ for (const [cc, cities] of Object.entries(ccCities)) {
   );
 }
 
+// Known local stations that the source dump copied into every city.
+// Keep them in their actual broadcast city.
+const HOME_OVERRIDES = {
+  'https://cast1.my-control-panel.com/proxy/geethan3/stream': 'Madurai', // Vaigai Fm
+  'https://listen.openstream.co/6812/audio': 'Kodaikanal', // Kodaicity Fm
+  'https://cast6.my-control-panel.com/proxy/kodairagamradio/stream': 'Kodaikanal', // Kodairagam Rad
+  'https://spserver.sscast2u.in/8124/stream': 'Dindigul', // Dindigul Rad
+  'https://spserver.sscast2u.in/ssradionatham/stream': 'Natham', // Ss Rad Natham
+};
+
+// Capital / largest city per affected country (data uses legacy 2-letter codes).
+// City names in the source are truncated to 13 chars; match on that prefix.
+const PRIMARY_CITY = {
+  CA: 'Toronto', ES: 'Madrid', DN: 'Copenhagen', DE: 'Berlin', NL: 'Amsterdam',
+  BE: 'Brussels', NG: 'Lagos', BR: 'Sao Paulo', RUS: 'Moscow', RU: 'Moscow',
+  US: 'New York', VE: 'Caracas', CO: 'Bogota', GB: 'London', AR: 'Buenos Aires',
+  IN: 'New Delhi', ME: 'Mexico City', GH: 'Accra', IT: 'Rome', PE: 'Lima',
+  SR: 'Belgrade', DZ: 'Algiers', GR: 'Athens', FR: 'Paris', PH: 'Manila',
+  GT: 'Guatemala City', UR: 'Montevideo', ID: 'Jakarta', BO: 'La Paz',
+  NZ: 'Auckland', SW: 'Stockholm', LK: 'Colombo', FI: 'Helsinki', CR: 'San Jose',
+  RO: 'Bucharest', UG: 'Kampala', NO: 'Oslo', EC: 'Quito', IS: 'Reykjavik',
+  PO: 'Warsaw', HN: 'Tegucigalpa', UKR: 'Kyiv', UK: 'Kyiv', TZ: 'Dar es Salaam',
+  KE: 'Nairobi', DO: 'Santo Domingo', HR: 'Zagreb', ZA: 'Johannesburg',
+  HU: 'Budapest', TH: 'Bangkok', NP: 'Kathmandu', BI: 'Sarajevo', CU: 'Havana',
+  CZ: 'Prague', HT: 'Port-au-Prince', CHN: 'Beijing',
+};
+
+const cityName = (key) => key.slice(0, key.lastIndexOf(',')).toLowerCase();
+const truncated = (name) => name.toLowerCase().slice(0, 13);
+
+function findHome(cities, cc, url, name) {
+  // 1) explicit override by URL
+  const override = HOME_OVERRIDES[url];
+  if (override) {
+    const hit = cities.find((k) => cityName(k).startsWith(override.toLowerCase()));
+    if (hit) return hit;
+  }
+  // 2) station name contains a city name
+  const target = name.toLowerCase();
+  for (const key of cities) {
+    const cn = cityName(key);
+    if (cn.length >= 4 && target.includes(cn)) return key;
+  }
+  // 3) primary city for the country
+  const primary = PRIMARY_CITY[cc];
+  if (primary) {
+    const hit = cities.find((k) => truncated(cityName(k)).startsWith(truncated(primary)));
+    if (hit) return hit;
+  }
+  // 4) largest city after removing runaway stations
+  const runaway = runawayByCc[cc];
+  let best = null;
+  let max = -1;
+  for (const key of cities) {
+    const n = raw[key].urls.filter((s) => s.url && !(runaway && runaway.has(s.url))).length;
+    if (n > max) {
+      max = n;
+      best = key;
+    }
+  }
+  return best;
+}
+
 let runawayStations = 0;
 let runawayEntries = 0;
-for (const key of Object.keys(raw)) {
-  const cc = key.slice(key.lastIndexOf(',') + 1).trim();
-  const runaway = runawayByCc[cc];
-  if (!runaway) continue;
-  const filtered = (raw[key].urls || []).filter((s) => !(s.url && runaway.has(s.url)));
-  if (filtered.length !== raw[key].urls.length) {
-    runawayEntries += raw[key].urls.length - filtered.length;
-    raw[key].urls = filtered;
+let missingHomes = 0;
+for (const [cc, runaway] of Object.entries(runawayByCc)) {
+  const cities = ccCities[cc];
+  for (const url of runaway) {
+    let name = '';
+    for (const key of cities) {
+      const s = (raw[key].urls || []).find((s) => s.url === url);
+      if (s) {
+        name = s.name || '';
+        break;
+      }
+    }
+    if (!name) continue; // unnamed entries are filtered out later anyway
+    const home = findHome(cities, cc, url, name);
+    if (!home) {
+      missingHomes++;
+      console.warn(`  no home city for ${cc}: ${name}`);
+      continue;
+    }
+    for (const key of cities) {
+      const before = raw[key].urls.length;
+      raw[key].urls = (raw[key].urls || []).filter((s) => !(s.url === url));
+      runawayEntries += before - raw[key].urls.length;
+    }
+    raw[home].urls.push({ name, url }); // keep it in exactly one city
   }
 }
 runawayStations = Object.values(runawayByCc).reduce((sum, s) => sum + s.size, 0);
 if (runawayStations > 0) {
-  console.log(`Cleanup: removed ${runawayStations} runaway stations (${runawayEntries} city entries)`);
+  console.log(`Cleanup: ${runawayStations} runaway stations kept in one city each (${runawayEntries} duplicated entries removed)`);
+  if (missingHomes > 0) console.log(`  WARNING: ${missingHomes} stations had no home city`);
 }
 
 // ─── Step 1: Build index.json (compact city coords) ─────────────────────
