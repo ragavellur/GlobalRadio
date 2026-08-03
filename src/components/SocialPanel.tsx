@@ -6,6 +6,7 @@ import { SUPABASE_ENABLED } from '../lib/supabase';
 import { useRoomChat } from '../hooks/useRoomChat';
 import { useDMs } from '../hooks/useDMs';
 import { useUserDirectory } from '../hooks/useUserDirectory';
+import { useHeartbeat } from '../hooks/useHeartbeat';
 import { cityKeyOf } from '../lib/social';
 import { countryName } from '../lib/countryNames';
 import type { RoomMessage, DirectMessage, Conversation, UserDirectoryEntry } from '../lib/social';
@@ -25,13 +26,14 @@ function SocialPanelInner() {
   const city = selectedCity;
   const station = currentStation;
   const dms = useDMs(!!user);
+  const hb = useHeartbeat();
 
   const chat = useRoomChat(
     socialOpen && socialRoom ? socialRoom.roomId : null,
     socialRoom?.roomName ?? ''
   );
 
-  const dmUnread = dms.conversations.reduce((n, c) => n + c.unread, 0);
+  const dmUnread = hb.unread.filter((u) => u.conversation_id !== dms.openId).reduce((n, u) => n + u.unread, 0);
 
   const startDmTo = useCallback(
     (peerId: string) => {

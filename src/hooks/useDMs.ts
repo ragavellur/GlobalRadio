@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from '../lib/auth';
 import { supabase, SUPABASE_ENABLED } from '../lib/supabase';
@@ -11,6 +11,7 @@ import {
   type Conversation,
   type DirectMessage,
 } from '../lib/social';
+import { useHeartbeat } from './useHeartbeat';
 
 export interface DmState {
   conversations: Conversation[];
@@ -26,12 +27,14 @@ export interface DmState {
 
 export function useDMs(active: boolean): DmState {
   const { user } = useAuth();
+  const hb = useHeartbeat();
   const meId = user?.id ?? null;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const lastRefreshRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!SUPABASE_ENABLED) return;
@@ -54,6 +57,7 @@ export function useDMs(active: boolean): DmState {
       return;
     }
     let mounted = true;
+    lastRefreshRef.current = Date.now();
     setLoading(true);
     fetchConversations().then((convs) => {
       if (mounted) {
@@ -81,16 +85,23 @@ export function useDMs(active: boolean): DmState {
         .subscribe();
     }
 
-    const t = setInterval(() => {
-      fetchConversations().then((convs) => mounted && setConversations(convs));
-    }, 15_000);
-
     return () => {
       mounted = false;
-      clearInterval(t);
       if (inboxChannel && supabase) supabase.removeChannel(inboxChannel);
     };
   }, [active, user]);
+
+  // Refresh the inbox whenever the heartbeat detects an unread-DM change.
+  useEffect(() => {
+    if (!active || !user) return;
+    if (hb.unreadChangedAt <= lastRefreshRef.current) return;
+    lastRefreshRef.current = hb.unreadChangedAt;
+    let mounted = true;
+    fetchConversations().then((convs) => mounted && setConversations(convs));
+    return () => {
+      mounted = false;
+    };
+  }, [active, user, hb.unreadChangedAt]);
 
   // Load messages for the open conversation + realtime subscription.
   useEffect(() => {

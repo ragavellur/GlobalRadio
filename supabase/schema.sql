@@ -472,3 +472,99 @@ create extension if not exists pg_cron;
 select cron.unschedule('presence-purge') where exists (select 1 from cron.job where jobname = 'presence-purge');
 select cron.schedule('presence-purge', '*/2 * * * *',
   $$delete from public.presence where last_seen < now() - interval '90 seconds'$$);
+
+-- ============================================================================
+-- HEARTBEAT
+-- Single consolidated RPC: presence upsert + city listener data + unread DMs.
+-- Called every ~10s while the app is active. Replaces the separate presence
+-- upsert, city-listener poll, and 15s DM-inbox poll.
+-- ============================================================================
+create or replace function public.heartbeat(
+  p_device_id text,
+  p_station_url text,
+  p_station_name text,
+  p_city_key text,
+  p_city text,
+  p_country text,
+  p_skip_presence boolean default false
+)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  me uuid := auth.uid();
+  cutoff timestamptz := now() - interval '30 seconds';
+  city_json jsonb;
+  unread_json jsonb;
+begin
+  if not p_skip_presence and p_device_id is not null and p_station_url <> '' then
+    insert into public.presence (device_id, user_id, station_url, station_name, city_key, city, country, last_seen)
+    values (p_device_id, me, p_station_url, p_station_name, p_city_key, p_city, p_country, now())
+    on conflict (device_id) do update
+    set user_id = excluded.user_id,
+        station_url = excluded.station_url,
+        station_name = excluded.station_name,
+        city_key = excluded.city_key,
+        city = excluded.city,
+        country = excluded.country,
+        last_seen = excluded.last_seen;
+  end if;
+
+  select jsonb_build_object(
+    'count', (select count(*)::int from public.presence where city_key = p_city_key and last_seen > cutoff),
+    'byStation', coalesce((
+      select jsonb_object_agg(sq.station_url, sq.cnt)
+      from (
+        select station_url, count(*)::int as cnt
+        from public.presence
+        where city_key = p_city_key and last_seen > cutoff
+        group by station_url
+      ) sq
+    ), '{}'::jsonb),
+    'listeners', coalesce((
+      select jsonb_agg(row_to_json(l)::jsonb)
+      from (
+        select pr.device_id, pr.user_id, pr.station_url, pr.station_name, pr.city_key,
+               pf.display_name, pf.avatar_url
+        from public.presence pr
+        left join public.profiles pf on pf.id = pr.user_id
+        where pr.city_key = p_city_key and pr.last_seen > cutoff
+        order by pr.last_seen desc
+        limit 200
+      ) l
+    ), '[]'::jsonb)
+  ) into city_json;
+
+  if me is not null then
+    select coalesce(
+      jsonb_agg(jsonb_build_object(
+        'conversation_id', u.conversation_id,
+        'unread', u.unread,
+        'last_created_at', u.last_created_at
+      )),
+      '[]'::jsonb
+    )
+    into unread_json
+    from (
+      select cp.conversation_id, u.unread, u.last_created_at
+      from public.conversation_participants cp
+      cross join lateral (
+        select count(*)::int as unread, max(created_at) as last_created_at
+        from public.direct_messages dm
+        where dm.conversation_id = cp.conversation_id
+          and dm.sender_id <> me
+          and dm.created_at > cp.last_read_at
+      ) u
+      where cp.user_id = me and u.unread > 0
+    ) u;
+  else
+    unread_json := '[]'::jsonb;
+  end if;
+
+  return jsonb_build_object('city', city_json, 'unread', unread_json);
+end;
+$$;
+
+revoke all on function public.heartbeat(text, text, text, text, text, text, boolean) from public;
+grant execute on function public.heartbeat(text, text, text, text, text, text, boolean) to anon, authenticated;

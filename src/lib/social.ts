@@ -1,4 +1,3 @@
-import type { User } from '@supabase/supabase-js';
 import { supabase, SUPABASE_ENABLED } from './supabase';
 import type { City, Station } from '../types';
 
@@ -51,18 +50,6 @@ export function stationRoomId(stationUrl: string): Promise<string> {
 // ============================================================================
 // Presence / heartbeat
 // ============================================================================
-export interface PresenceRow {
-  device_id: string;
-  user_id: string | null;
-  station_url: string;
-  station_name: string;
-  city_key: string;
-  city: string;
-  country: string;
-  last_seen: string;
-  profiles?: { display_name: string; avatar_url: string | null } | null;
-}
-
 export interface Listener {
   id: string;
   userId: string | null;
@@ -74,57 +61,73 @@ export interface Listener {
   cityKey: string;
 }
 
-export async function sendHeartbeat(
-  station: Station,
-  city: City,
-  user: User | null
-): Promise<void> {
-  if (!supabase) return;
-  const device_id = getDeviceId();
-  await supabase.from('presence').upsert(
-    {
-      device_id,
-      user_id: user?.id ?? null,
-      station_url: station.url,
-      station_name: station.name,
-      city_key: cityKeyOf(city),
-      city: city.city,
-      country: city.country,
-      last_seen: new Date().toISOString(),
-    },
-    { onConflict: 'device_id' }
-  );
+export interface HeartbeatUnread {
+  conversation_id: string;
+  unread: number;
+  last_created_at: string | null;
 }
 
-export async function fetchCityListeners(cityKey: string): Promise<Listener[]> {
-  if (!supabase) return [];
-  const cutoff = new Date(Date.now() - 30_000).toISOString();
-  const { data, error } = await supabase
-    .from('presence')
-    .select(
-      'device_id, user_id, station_url, station_name, city_key, last_seen, profiles(display_name, avatar_url)'
-    )
-    .eq('city_key', cityKey)
-    .gte('last_seen', cutoff)
-    .order('last_seen', { ascending: false })
-    .limit(200);
-  if (error || !data) return [];
-  return (data as any[]).map((row) => {
+export interface HeartbeatResult {
+  city: {
+    count: number;
+    byStation: Record<string, number>;
+    listeners: Listener[];
+  };
+  unread: HeartbeatUnread[];
+}
+
+/**
+ * Single consolidated heartbeat: upserts presence (when playing) and returns
+ * the city's active-listener data plus unread DM indicators for the signed-in
+ * user. Replaces the old presence upsert + city-listener poll + DM-inbox poll.
+ */
+export async function sendHeartbeat(
+  station: Station | null,
+  city: City | null,
+  skipPresence = false
+): Promise<HeartbeatResult | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('heartbeat', {
+    p_device_id: getDeviceId(),
+    p_station_url: station?.url ?? '',
+    p_station_name: station?.name ?? '',
+    p_city_key: city ? cityKeyOf(city) : '',
+    p_city: city?.city ?? '',
+    p_country: city?.country ?? '',
+    p_skip_presence: skipPresence || !city,
+  });
+  if (error || !data) return null;
+  const raw = data as {
+    city?: {
+      count?: number;
+      byStation?: Record<string, number>;
+      listeners?: Array<Record<string, any>> | null;
+    } | null;
+    unread?: HeartbeatUnread[] | null;
+  };
+  const listeners = (raw.city?.listeners ?? []).map((row) => {
     const anonymous = !row.user_id;
-    const profile = row.profiles ?? null;
     return {
       id: row.user_id ?? row.device_id,
       userId: row.user_id,
       displayName: anonymous
         ? 'Anonymous listener'
-        : profile?.display_name || 'Radio listener',
-      avatarUrl: profile?.avatar_url ?? null,
+        : row.display_name || 'Radio listener',
+      avatarUrl: row.avatar_url ?? null,
       anonymous,
       stationUrl: row.station_url,
       stationName: row.station_name,
       cityKey: row.city_key,
     };
   });
+  return {
+    city: {
+      count: raw.city?.count ?? 0,
+      byStation: raw.city?.byStation ?? {},
+      listeners,
+    },
+    unread: raw.unread ?? [],
+  };
 }
 
 export interface LiveStation {
