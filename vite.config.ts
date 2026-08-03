@@ -11,6 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
+      exclude: [/sonos-callback\.html$/],
       includeAssets: ['icon-48.png', 'icon-72.png', 'icon-96.png', 'icon-128.png', 'icon-144.png', 'icon-152.png', 'icon-192.png', 'icon-384.png', 'icon-512.png', 'favicon.png'],
       manifest: {
         name: 'Global Radio Explorer',
@@ -36,6 +37,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        globIgnores: ['**/sonos-callback.html'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/sonos-callback\.html/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/server\.arcgisonline\.com\/.*/i,
