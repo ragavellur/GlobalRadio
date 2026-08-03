@@ -348,6 +348,9 @@ function ListenersView({
   const stationListeners = station
     ? cityListeners.filter((l) => l.stationUrl === station.url)
     : [];
+  const otherListeners = cityListeners.filter(
+    (l) => !stationListeners.includes(l)
+  );
 
   return (
     <div className="px-3 py-2">
@@ -355,26 +358,35 @@ function ListenersView({
         <div className="text-center text-white/40 text-[13px] py-6">
           Select a city on the globe to see who's listening.
         </div>
-      ) : (
+      ) : station ? (
         <>
-          <SectionHeader
-            label={`Listening in ${city.city}, ${city.country}`}
-            count={counts.cityCount}
-          />
-          {cityListeners.length === 0 && <EmptyNote text="No one is listening here right now." />}
-          {cityListeners.map((l) => (
+          <SectionHeader label={`Listening to ${station.name}`} count={stationListeners.length} />
+          {stationListeners.length === 0 && (
+            <EmptyNote text="No one is listening to this station right now." />
+          )}
+          {stationListeners.map((l) => (
             <ListenerRow key={l.id} listener={l} meId={meId} onDm={onDm} />
           ))}
 
-          {station && (
+          {otherListeners.length > 0 && (
             <>
-              <SectionHeader label={`Listening to ${station.name}`} count={stationListeners.length} />
-              {stationListeners.length === 0 && <EmptyNote text="No one is listening to this station right now." />}
-              {stationListeners.map((l) => (
+              <SectionHeader
+                label={`Other stations in ${city.city}, ${city.country}`}
+                count={otherListeners.length}
+              />
+              {otherListeners.map((l) => (
                 <ListenerRow key={l.id} listener={l} meId={meId} onDm={onDm} />
               ))}
             </>
           )}
+        </>
+      ) : (
+        <>
+          <SectionHeader label={`Listening in ${city.city}, ${city.country}`} count={counts.cityCount} />
+          {cityListeners.length === 0 && <EmptyNote text="No one is listening here right now." />}
+          {cityListeners.map((l) => (
+            <ListenerRow key={l.id} listener={l} meId={meId} onDm={onDm} />
+          ))}
         </>
       )}
     </div>
@@ -442,6 +454,7 @@ function DmView({
   onRequireSignIn: () => void;
 }) {
   const [draft, setDraft] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const openConv = dms.openId ? dms.conversations.find((c) => c.conversation_id === dms.openId) : null;
@@ -517,12 +530,21 @@ function DmView({
           e.preventDefault();
           const text = draft.trim();
           if (!text) return;
-          void dms.send(text);
-          setDraft('');
+          setSendError(null);
+          void dms.send(text).then((ok) => {
+            if (ok) {
+              setDraft('');
+            } else {
+              setSendError("Message couldn't be sent. Try again.");
+            }
+          });
         }}
-        className="flex items-center gap-2 px-3 py-2.5"
         style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
       >
+        {sendError && (
+          <div className="px-3 pt-2 text-[12px] text-red-300">{sendError}</div>
+        )}
+        <div className="flex items-center gap-2 px-3 py-2.5">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -540,6 +562,7 @@ function DmView({
             <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
           </svg>
         </button>
+        </div>
       </form>
     </div>
   );
@@ -600,7 +623,8 @@ function Avatar({ url, name, size }: { url: string | null; name: string; size: n
     return (
       <img
         src={url}
-        alt={name}
+        alt=""
+        aria-hidden="true"
         className="rounded-full shrink-0 object-cover"
         style={{ width: size, height: size }}
         referrerPolicy="no-referrer"

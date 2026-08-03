@@ -249,7 +249,10 @@ export interface Conversation {
 export async function startDm(peerId: string): Promise<string | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.rpc('get_or_create_dm', { p_peer: peerId });
-  if (error || !data) return null;
+  if (error || !data) {
+    console.error('startDm failed:', error?.message ?? 'no data');
+    return null;
+  }
   return data as string;
 }
 
@@ -346,13 +349,19 @@ export async function sendDirectMessage(
     data: { session },
   } = await supabase.auth.getSession();
   const user = session?.user;
-  if (!user) return null;
+  if (!user) {
+    console.error('sendDirectMessage: no session');
+    return null;
+  }
   const { data, error } = await supabase
     .from('direct_messages')
     .insert({ conversation_id: conversationId, sender_id: user.id, body: text })
     .select('id, conversation_id, sender_id, body, created_at')
     .single();
-  if (error || !data) return null;
+  if (error || !data) {
+    console.error('sendDirectMessage insert failed:', error?.message ?? 'no data');
+    return null;
+  }
   return {
     ...(data as DirectMessage),
     profiles: {

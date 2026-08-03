@@ -20,7 +20,7 @@ export interface DmState {
   messagesLoading: boolean;
   openConversation: (convId: string) => void;
   startConversation: (peerId: string) => Promise<void>;
-  send: (body: string) => Promise<void>;
+  send: (body: string) => Promise<boolean>;
   refresh: () => Promise<void>;
 }
 
@@ -166,29 +166,32 @@ export function useDMs(active: boolean): DmState {
   );
 
   const send = useCallback(
-    async (body: string) => {
-      if (!openId) return;
-      const msg = await sendDirectMessage(openId, body);
-      if (msg) {
-        setMessages((prev) =>
-          prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
-        );
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.conversation_id === openId
-              ? {
-                  ...c,
-                  unread: 0,
-                  lastMessage: {
-                    body: msg.body,
-                    sender_id: msg.sender_id,
-                    created_at: msg.created_at,
-                  },
-                }
-              : c
-          )
-        );
+    async (body: string): Promise<boolean> => {
+      if (!openId) {
+        console.error('send: no open conversation');
+        return false;
       }
+      const msg = await sendDirectMessage(openId, body);
+      if (!msg) return false;
+      setMessages((prev) =>
+        prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
+      );
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.conversation_id === openId
+            ? {
+                ...c,
+                unread: 0,
+                lastMessage: {
+                  body: msg.body,
+                  sender_id: msg.sender_id,
+                  created_at: msg.created_at,
+                },
+              }
+            : c
+        )
+      );
+      return true;
     },
     [openId]
   );
