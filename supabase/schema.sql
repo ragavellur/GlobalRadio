@@ -238,13 +238,28 @@ grant execute on function public.get_or_create_dm(uuid) to authenticated;
 
 alter table public.conversations enable row level security;
 
+-- Helper: is the current user a participant of this conversation?
+-- Security definer so RLS policies can check membership without recursing
+-- into the conversation_participants policies.
+create or replace function public.is_dm_participant(p_conv uuid)
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.conversation_participants
+    where conversation_id = p_conv and user_id = auth.uid()
+  );
+$$;
+
+revoke all on function public.is_dm_participant(uuid) from public;
+grant execute on function public.is_dm_participant(uuid) to anon, authenticated;
+
 drop policy if exists "conv participant select" on public.conversations;
 create policy "conv participant select" on public.conversations
   for select using (
-    exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = id and cp.user_id = auth.uid()
-    )
+    public.is_dm_participant(id)
   );
 
 alter table public.conversation_participants enable row level security;
@@ -252,11 +267,7 @@ alter table public.conversation_participants enable row level security;
 drop policy if exists "cp participant select" on public.conversation_participants;
 create policy "cp participant select" on public.conversation_participants
   for select using (
-    user_id = auth.uid()
-    or exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = conversation_id and cp.user_id = auth.uid()
-    )
+    public.is_dm_participant(conversation_id)
   );
 
 drop policy if exists "cp own update" on public.conversation_participants;
@@ -268,20 +279,14 @@ alter table public.direct_messages enable row level security;
 drop policy if exists "dm participant select" on public.direct_messages;
 create policy "dm participant select" on public.direct_messages
   for select using (
-    exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = conversation_id and cp.user_id = auth.uid()
-    )
+    public.is_dm_participant(conversation_id)
   );
 
 drop policy if exists "dm participant insert" on public.direct_messages;
 create policy "dm participant insert" on public.direct_messages
   for insert with check (
     sender_id = auth.uid()
-    and exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = conversation_id and cp.user_id = auth.uid()
-    )
+    and public.is_dm_participant(conversation_id)
   );
 
 -- ============================================================================
