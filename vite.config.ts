@@ -9,12 +9,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['icon-48.png', 'icon-72.png', 'icon-96.png', 'icon-128.png', 'icon-144.png', 'icon-152.png', 'icon-192.png', 'icon-384.png', 'icon-512.png', 'favicon.png'],
       manifest: {
         name: 'Global Radio Explorer',
         short_name: 'Global Radio',
-        description: 'Explore radio stations from around the world on an interactive 3D globe',
+        description: 'Explore live radio stations from around the world on an interactive 3D globe',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
