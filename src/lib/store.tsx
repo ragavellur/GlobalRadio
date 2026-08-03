@@ -1,5 +1,5 @@
 import { useState, useCallback, createContext, useContext } from 'react';
-import type { City, Station, RadioState } from '../types';
+import type { City, Station, SocialRoom, RadioState } from '../types';
 
 interface RadioStore extends RadioState {
   setCities: (cities: City[]) => void;
@@ -14,6 +14,9 @@ interface RadioStore extends RadioState {
   setSidebarOpen: (open: boolean) => void;
   setSidebarTab: (tab: 'search' | 'browse' | 'station') => void;
   setPendingStationUrl: (url: string | null) => void;
+  openSocial: () => void;
+  openSocialRoom: (room: SocialRoom) => void;
+  closeSocial: () => void;
 }
 
 const RadioContext = createContext<RadioStore | null>(null);
@@ -31,6 +34,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     sidebarOpen: false,
     sidebarTab: 'search',
     pendingStationUrl: null,
+    socialOpen: false,
+    socialRoom: null,
   });
 
   const setCities = useCallback((cities: City[]) => {
@@ -81,6 +86,18 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, pendingStationUrl: url }));
   }, []);
 
+  const openSocial = useCallback(() => {
+    setState((prev) => ({ ...prev, socialOpen: true, socialRoom: null }));
+  }, []);
+
+  const openSocialRoom = useCallback((room: SocialRoom) => {
+    setState((prev) => ({ ...prev, socialOpen: true, socialRoom: room }));
+  }, []);
+
+  const closeSocial = useCallback(() => {
+    setState((prev) => ({ ...prev, socialOpen: false, socialRoom: null }));
+  }, []);
+
   return (
     <RadioContext.Provider
       value={{
@@ -97,6 +114,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setSidebarOpen,
         setSidebarTab,
         setPendingStationUrl,
+        openSocial,
+        openSocialRoom,
+        closeSocial,
       }}
     >
       {children}

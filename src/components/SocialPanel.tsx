@@ -5,15 +5,12 @@ import { useSignInDialog } from './SignInDialog';
 import { SUPABASE_ENABLED } from '../lib/supabase';
 import { useRoomChat } from '../hooks/useRoomChat';
 import { useDMs } from '../hooks/useDMs';
-import { useListenerCounts } from '../hooks/useListenerCounts';
 import { useUserDirectory } from '../hooks/useUserDirectory';
-import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
+import { cityKeyOf } from '../lib/social';
 import { countryName } from '../lib/countryNames';
-import type { Listener, RoomMessage, DirectMessage, Conversation, UserDirectoryEntry } from '../lib/social';
+import type { RoomMessage, DirectMessage, Conversation, UserDirectoryEntry } from '../lib/social';
 import type { City } from '../types';
 import SlidePanel from './SlidePanel';
-
-type Tab = 'chat' | 'listeners' | 'users' | 'dm';
 
 export default function SocialPanel() {
   if (!SUPABASE_ENABLED) return null;
@@ -23,69 +20,33 @@ export default function SocialPanel() {
 function SocialPanelInner() {
   const { user } = useAuth();
   const { openSignInDialog } = useSignInDialog();
-  const { selectedCity, currentStation } = useRadioStore();
-
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>('chat');
-  const [roomMode, setRoomMode] = useState<'city' | 'station'>('station');
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const { selectedCity, currentStation, socialOpen, socialRoom, openSocial, closeSocial } = useRadioStore();
 
   const city = selectedCity;
   const station = currentStation;
-
-  useEffect(() => {
-    if (!open) {
-      setRoomId(null);
-      return;
-    }
-    let cancelled = false;
-    const compute = async () => {
-      if (roomMode === 'station' && station) {
-        const id = await stationRoomId(station.url);
-        if (!cancelled) setRoomId(id);
-      } else if (roomMode === 'city' && city) {
-        const id = await cityRoomId(cityKeyOf(city));
-        if (!cancelled) setRoomId(id);
-      } else {
-        setRoomId(null);
-      }
-    };
-    void compute();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, roomMode, station, city]);
-
-  const roomName = useMemo(() => {
-    if (roomMode === 'station' && station) return station.name;
-    if (city) return `${city.city}, ${city.country}`;
-    return '';
-  }, [roomMode, station, city]);
-
-  const chat = useRoomChat(open ? roomId : null, roomName);
-  const counts = useListenerCounts(city, open && tab === 'listeners');
   const dms = useDMs(!!user);
+
+  const chat = useRoomChat(
+    socialOpen && socialRoom ? socialRoom.roomId : null,
+    socialRoom?.roomName ?? ''
+  );
 
   const dmUnread = dms.conversations.reduce((n, c) => n + c.unread, 0);
 
   const startDmTo = useCallback(
     (peerId: string) => {
       void dms.startConversation(peerId);
-      setTab('dm');
     },
     [dms]
   );
 
-  const hasStationRoom = !!station;
-  const hasCityRoom = !!city;
-
   return (
     <>
-      {/* Chat button */}
+      {/* People button */}
       <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Social"
-        title="City & station chat, listeners, DMs"
+        onClick={() => (socialOpen ? closeSocial() : openSocial())}
+        aria-label="People"
+        title="Find listeners & message them"
         className="flex items-center justify-center rounded-full"
         style={{
           position: 'relative',
@@ -110,81 +71,36 @@ function SocialPanelInner() {
         )}
       </button>
 
-      <SlidePanel open={open} onClose={() => setOpen(false)} title="Social" subtitle="Chat with listeners around the world">
-        {/* Tabs */}
-        <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          {(
-            [
-              ['chat', 'Chat'],
-              ['listeners', 'Listeners'],
-              ['users', 'Users'],
-              ['dm', 'DMs'],
-            ] as [Tab, string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className="flex-1 py-2.5 text-[13px] font-medium"
-              style={{
-                cursor: 'pointer',
-                border: 'none',
-                background: 'transparent',
-                color: tab === key ? '#00C864' : 'rgba(255,255,255,0.55)',
-                borderBottom: tab === key ? '2px solid #00C864' : '2px solid transparent',
-              }}
-            >
-              {label}
-              {key === 'dm' && dms.conversations.length > 0 && (
-                <span className="ml-1 text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  {dms.conversations.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'chat' && (
-          <ChatView
+      <SlidePanel
+        open={socialOpen}
+        onClose={closeSocial}
+        title={socialRoom ? socialRoom.roomName : 'People'}
+        subtitle={socialRoom ? 'Group chat' : 'Find listeners & message them'}
+      >
+        {socialRoom ? (
+          <RoomChatView
             user={!!user}
-            hasCityRoom={hasCityRoom}
-            hasStationRoom={hasStationRoom}
-            roomMode={roomMode}
-            setRoomMode={setRoomMode}
-            cityName={city ? `${city.city}, ${city.country}` : ''}
-            stationName={station?.name ?? ''}
+            roomName={socialRoom.roomName}
             messages={chat.messages}
             loading={chat.loading}
             onSend={chat.send}
+            onBack={closeSocial}
             onRequireSignIn={() => openSignInDialog()}
           />
-        )}
-
-        {tab === 'listeners' && (
-          <ListenersView
-            city={city}
-            station={station}
-            counts={counts}
-            meId={user?.id ?? null}
-            onDm={startDmTo}
-          />
-        )}
-
-        {tab === 'users' && (
-          <UsersView
-            city={city}
-            station={station}
-            meId={user?.id ?? null}
-            onDm={startDmTo}
-            onRequireSignIn={() => openSignInDialog()}
-          />
-        )}
-
-        {tab === 'dm' && (
-          <DmView
+        ) : dms.openId ? (
+          <DmThread
             dms={dms}
             meId={user?.id ?? null}
+            onBack={() => dms.openConversation('')}
+          />
+        ) : (
+          <PeopleView
+            city={city}
+            station={station}
+            dms={dms}
+            meId={user?.id ?? null}
+            onDm={startDmTo}
             onRequireSignIn={() => openSignInDialog()}
-            user={!!user}
           />
         )}
       </SlidePanel>
@@ -193,40 +109,33 @@ function SocialPanelInner() {
 }
 
 /* ============================================================================
-   Chat
+   Group chat (opened from a city or station chat icon)
    ============================================================================ */
-function ChatView({
+function RoomChatView({
   user,
-  hasCityRoom,
-  hasStationRoom,
-  roomMode,
-  setRoomMode,
-  cityName,
-  stationName,
+  roomName,
   messages,
   loading,
   onSend,
+  onBack,
   onRequireSignIn,
 }: {
   user: boolean;
-  hasCityRoom: boolean;
-  hasStationRoom: boolean;
-  roomMode: 'city' | 'station';
-  setRoomMode: (m: 'city' | 'station') => void;
-  cityName: string;
-  stationName: string;
+  roomName: string;
   messages: RoomMessage[];
   loading: boolean;
   onSend: (body: string) => Promise<void>;
+  onBack: () => void;
   onRequireSignIn: () => void;
 }) {
   const [draft, setDraft] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, roomMode]);
+  }, [messages.length]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,88 +145,68 @@ function ChatView({
       onRequireSignIn();
       return;
     }
-    void onSend(text);
-    setDraft('');
+    setSendError(null);
+    void onSend(text).then(() => setDraft(''));
   };
 
-  const hasRoom = hasCityRoom || hasStationRoom;
-
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
-      {/* Room selector */}
-      <div className="flex gap-2 px-3 py-2.5">
-        {hasCityRoom && (
-          <RoomChip active={roomMode === 'city'} onClick={() => setRoomMode('city')} label={`City · ${cityName}`} />
-        )}
-        {hasStationRoom && (
-          <RoomChip active={roomMode === 'station'} onClick={() => setRoomMode('station')} label={`Station · ${stationName}`} />
-        )}
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+      <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <button
+          onClick={onBack}
+          className="flex items-center justify-center rounded-full hover:bg-white/10"
+          style={{ width: 28, height: 28, cursor: 'pointer', border: 'none', background: 'transparent' }}
+          aria-label="Close chat"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0 text-[13px] text-white/60 truncate">
+          Group chat · {roomName}
+        </div>
       </div>
 
-      {!hasRoom ? (
-        <div className="flex-1 flex items-center justify-center px-6 text-center text-[13px] text-white/40">
-          Select a city on the globe (or play a station) to open its live chat.
-        </div>
-      ) : (
-        <>
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto px-3 py-2"
-            style={{ minHeight: 0 }}
-          >
-            {loading && messages.length === 0 && (
-              <div className="text-center text-white/40 text-[13px] py-6">Loading chat…</div>
-            )}
-            {!loading && messages.length === 0 && (
-              <div className="text-center text-white/40 text-[13px] py-6">
-                No messages yet. Say hello!
-              </div>
-            )}
-            {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} />
-            ))}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2" style={{ minHeight: 0 }}>
+        {loading && messages.length === 0 && (
+          <div className="text-center text-white/40 text-[13px] py-6">Loading chat…</div>
+        )}
+        {!loading && messages.length === 0 && (
+          <div className="text-center text-white/40 text-[13px] py-6">
+            No messages yet. Say hello!
           </div>
+        )}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
+      </div>
 
-          <form onSubmit={submit} className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={user ? 'Message…' : 'Sign in to chat…'}
-              className="flex-1 rounded-full px-3.5 py-2 text-[13px] text-white outline-none"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-            />
-            <button
-              type="submit"
-              className="flex items-center justify-center rounded-full"
-              style={{ width: 36, height: 36, background: '#00C864', cursor: 'pointer', border: 'none' }}
-              aria-label="Send"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
-                <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
-              </svg>
-            </button>
-          </form>
-        </>
-      )}
+      <form
+        onSubmit={submit}
+        style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        {sendError && <div className="px-3 pt-2 text-[12px] text-red-300">{sendError}</div>}
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={user ? 'Message…' : 'Sign in to chat…'}
+            className="flex-1 rounded-full px-3.5 py-2 text-[13px] text-white outline-none"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+          />
+          <button
+            type="submit"
+            className="flex items-center justify-center rounded-full"
+            style={{ width: 36, height: 36, background: '#00C864', cursor: 'pointer', border: 'none' }}
+            aria-label="Send"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+            </svg>
+          </button>
+        </div>
+      </form>
     </div>
-  );
-}
-
-function RoomChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex-1 truncate rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors"
-      style={{
-        cursor: 'pointer',
-        border: 'none',
-        background: active ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.08)',
-        color: active ? '#00C864' : 'rgba(255,255,255,0.6)',
-      }}
-      title={label}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -343,130 +232,21 @@ function MessageBubble({ message }: { message: RoomMessage }) {
 }
 
 /* ============================================================================
-   Listeners
-   ============================================================================ */
-function ListenersView({
-  city,
-  station,
-  counts,
-  meId,
-  onDm,
-}: {
-  city: { city: string; country: string } | null;
-  station: { name: string; url: string } | null;
-  counts: { cityCount: number; listeners: Listener[] };
-  meId: string | null;
-  onDm: (peerId: string) => void;
-}) {
-  const cityListeners = counts.listeners;
-  const stationListeners = station
-    ? cityListeners.filter((l) => l.stationUrl === station.url)
-    : [];
-  const otherListeners = cityListeners.filter(
-    (l) => !stationListeners.includes(l)
-  );
-
-  return (
-    <div className="px-3 py-2">
-      {!city ? (
-        <div className="text-center text-white/40 text-[13px] py-6">
-          Select a city on the globe to see who's listening.
-        </div>
-      ) : station ? (
-        <>
-          <SectionHeader label={`Listening to ${station.name}`} count={stationListeners.length} />
-          {stationListeners.length === 0 && (
-            <EmptyNote text="No one is listening to this station right now." />
-          )}
-          {stationListeners.map((l) => (
-            <ListenerRow key={l.id} listener={l} meId={meId} onDm={onDm} />
-          ))}
-
-          {otherListeners.length > 0 && (
-            <>
-              <SectionHeader
-                label={`Other stations in ${city.city}, ${city.country}`}
-                count={otherListeners.length}
-              />
-              {otherListeners.map((l) => (
-                <ListenerRow key={l.id} listener={l} meId={meId} onDm={onDm} />
-              ))}
-            </>
-          )}
-        </>
-      ) : (
-        <>
-          <SectionHeader label={`Listening in ${city.city}, ${city.country}`} count={counts.cityCount} />
-          {cityListeners.length === 0 && <EmptyNote text="No one is listening here right now." />}
-          {cityListeners.map((l) => (
-            <ListenerRow key={l.id} listener={l} meId={meId} onDm={onDm} />
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
-function ListenerRow({
-  listener,
-  meId,
-  onDm,
-}: {
-  listener: Listener;
-  meId: string | null;
-  onDm: (peerId: string) => void;
-}) {
-  const canDm = !!listener.userId && listener.userId !== meId;
-  return (
-    <div className="flex items-center gap-2 py-2 rounded-lg hover:bg-white/5 transition-colors px-1">
-      <Avatar url={listener.avatarUrl} name={listener.displayName} size={26} />
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] text-white truncate">{listener.displayName}</div>
-        <div className="text-[11px] text-white/40 truncate">
-          {listener.anonymous ? '' : 'via '}
-          {listener.stationName}
-        </div>
-      </div>
-      {canDm && (
-        <button
-          onClick={() => onDm(listener.userId!)}
-          className="rounded-full px-3 py-1 text-[11px] font-medium shrink-0 transition-colors"
-          style={{ background: 'rgba(0,200,100,0.15)', color: '#00C864', cursor: 'pointer', border: 'none' }}
-        >
-          Message
-        </button>
-      )}
-    </div>
-  );
-}
-
-function SectionHeader({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex items-center justify-between mt-2 mb-1">
-      <span className="text-[12px] text-white/60 font-medium">{label}</span>
-      <span className="text-[11px] text-white/40">{count}</span>
-    </div>
-  );
-}
-
-function EmptyNote({ text }: { text: string }) {
-  return <div className="text-[13px] text-white/35 py-2">{text}</div>;
-}
-
-/* ============================================================================
-   Users (directory)
+   People (directory + DMs)
    ============================================================================ */
 type UsersScope = 'all' | 'country' | 'city' | 'station';
 
-function UsersView({
+function PeopleView({
   city,
   station,
+  dms,
   meId,
   onDm,
   onRequireSignIn,
 }: {
   city: City | null;
   station: { name: string; url: string } | null;
+  dms: ReturnType<typeof useDMs>;
   meId: string | null;
   onDm: (peerId: string) => void;
   onRequireSignIn: () => void;
@@ -491,6 +271,15 @@ function UsersView({
 
   return (
     <div className="px-3 py-2">
+      {dms.conversations.length > 0 && (
+        <>
+          <div className="text-[12px] text-white/60 font-medium mt-1 mb-1">Messages</div>
+          {dms.conversations.map((c) => (
+            <InboxRow key={c.conversation_id} conv={c} meId={meId} onOpen={() => dms.openConversation(c.conversation_id)} />
+          ))}
+        </>
+      )}
+
       <div className="flex flex-wrap gap-1.5 mb-2">
         {chips.map((c) => (
           <button
@@ -552,7 +341,15 @@ function UserRow({
   }
 
   return (
-    <div className="flex items-center gap-2 py-2 rounded-lg hover:bg-white/5 transition-colors px-1">
+    <button
+      onClick={() => {
+        if (isSelf) return;
+        if (meId) onDm(user.user_id);
+        else onRequireSignIn();
+      }}
+      className="w-full flex items-center gap-2 py-2 rounded-lg hover:bg-white/5 transition-colors px-1 text-left"
+      style={{ cursor: isSelf ? 'default' : 'pointer', border: 'none', background: 'transparent' }}
+    >
       <Avatar url={user.avatar_url} name={user.display_name} size={26} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 text-[13px] text-white truncate">
@@ -567,32 +364,21 @@ function UserRow({
         </div>
         <div className="text-[11px] text-white/40 truncate">{status}</div>
       </div>
-      {!isSelf && (
-        <button
-          onClick={() => (meId ? onDm(user.user_id) : onRequireSignIn())}
-          className="rounded-full px-3 py-1 text-[11px] font-medium shrink-0 transition-colors"
-          style={{ background: 'rgba(0,200,100,0.15)', color: '#00C864', cursor: 'pointer', border: 'none' }}
-        >
-          Message
-        </button>
-      )}
-    </div>
+    </button>
   );
 }
 
 /* ============================================================================
-   DMs
+   DM thread
    ============================================================================ */
-function DmView({
+function DmThread({
   dms,
   meId,
-  user,
-  onRequireSignIn,
+  onBack,
 }: {
   dms: ReturnType<typeof useDMs>;
   meId: string | null;
-  user: boolean;
-  onRequireSignIn: () => void;
+  onBack: () => void;
 }) {
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
@@ -605,42 +391,11 @@ function DmView({
     if (el) el.scrollTop = el.scrollHeight;
   }, [dms.messages.length, dms.openId]);
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-        <p className="text-[13px] text-white/50 mb-3">Sign in to message listeners.</p>
-        <button
-          onClick={onRequireSignIn}
-          className="rounded-full px-5 py-2 text-[13px] font-medium"
-          style={{ background: '#fff', color: '#333', cursor: 'pointer', border: 'none' }}
-        >
-          Sign in with Google
-        </button>
-      </div>
-    );
-  }
-
-  if (!dms.openId) {
-    return (
-      <div className="px-3 py-2">
-        {dms.loading && <div className="text-center text-white/40 text-[13px] py-6">Loading…</div>}
-        {!dms.loading && dms.conversations.length === 0 && (
-          <div className="text-center text-white/40 text-[13px] py-6">
-            No conversations yet. Open the Listeners tab and tap "Message" on a signed-in listener.
-          </div>
-        )}
-        {dms.conversations.map((c) => (
-          <InboxRow key={c.conversation_id} conv={c} meId={meId} onOpen={() => dms.openConversation(c.conversation_id)} />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
       <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <button
-          onClick={() => dms.openConversation('')}
+          onClick={onBack}
           className="flex items-center justify-center rounded-full hover:bg-white/10"
           style={{ width: 28, height: 28, cursor: 'pointer', border: 'none', background: 'transparent' }}
           aria-label="Back"
@@ -686,23 +441,23 @@ function DmView({
           <div className="px-3 pt-2 text-[12px] text-red-300">{sendError}</div>
         )}
         <div className="flex items-center gap-2 px-3 py-2.5">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Message…"
-          className="flex-1 rounded-full px-3.5 py-2 text-[13px] text-white outline-none"
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-        />
-        <button
-          type="submit"
-          className="flex items-center justify-center rounded-full"
-          style={{ width: 36, height: 36, background: '#00C864', cursor: 'pointer', border: 'none' }}
-          aria-label="Send"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
-          </svg>
-        </button>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Message…"
+            className="flex-1 rounded-full px-3.5 py-2 text-[13px] text-white outline-none"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+          />
+          <button
+            type="submit"
+            className="flex items-center justify-center rounded-full"
+            style={{ width: 36, height: 36, background: '#00C864', cursor: 'pointer', border: 'none' }}
+            aria-label="Send"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+            </svg>
+          </button>
         </div>
       </form>
     </div>

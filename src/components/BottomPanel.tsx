@@ -7,11 +7,12 @@ import type { NewFavorite } from '../lib/supabase';
 import { useSignInDialog } from './SignInDialog';
 import type { Station, City } from '../types';
 import { useListenerCounts } from '../hooks/useListenerCounts';
+import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
 
 export default function BottomPanel() {
   const {
     selectedCity, currentStation, isPlaying, pendingStationUrl,
-    playStation, pausePlayback, setPendingStationUrl,
+    playStation, pausePlayback, setPendingStationUrl, openSocialRoom,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -116,6 +117,24 @@ export default function BottomPanel() {
     setDrawerOpen((prev) => !prev);
   }, []);
 
+  const handleOpenCityChat = useCallback(
+    (city: any) => {
+      void cityRoomId(cityKeyOf(city)).then((id) =>
+        openSocialRoom({ roomId: id, roomName: `${city.city}, ${city.country}` })
+      );
+    },
+    [openSocialRoom]
+  );
+
+  const handleOpenStationChat = useCallback(
+    (station: Station) => {
+      void stationRoomId(station.url).then((id) =>
+        openSocialRoom({ roomId: id, roomName: station.name })
+      );
+    },
+    [openSocialRoom]
+  );
+
   return (
     <>
       {/* === Desktop panel (left side, 325px) === */}
@@ -136,6 +155,8 @@ export default function BottomPanel() {
           playStation={playStation}
           togglePlayback={togglePlayback}
           counts={counts}
+          onOpenCityChat={handleOpenCityChat}
+          onOpenStationChat={handleOpenStationChat}
         />
       </div>
 
@@ -155,6 +176,8 @@ export default function BottomPanel() {
           playStation={playStation}
           hasPlayer={!!currentStation}
           counts={counts}
+          onOpenCityChat={handleOpenCityChat}
+          onOpenStationChat={handleOpenStationChat}
         />
       </div>
 
@@ -179,6 +202,7 @@ export default function BottomPanel() {
 function DrawerContent({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
   isPlaying, audioStatus, localTime, handleToggleDrawer, playStation, togglePlayback, counts,
+  onOpenCityChat, onOpenStationChat,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -192,6 +216,8 @@ function DrawerContent({
   playStation: (s: Station) => void;
   togglePlayback: () => void;
   counts: ReturnType<typeof useListenerCounts>;
+  onOpenCityChat: (city: any) => void;
+  onOpenStationChat: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   const { isFavorite } = useFavorites();
@@ -207,39 +233,44 @@ function DrawerContent({
         {selectedCity && (
           <>
             {/* Handle + City banner — click anywhere to toggle */}
-            <button
-              onClick={handleToggleDrawer}
-              className="shrink-0 z-10 text-left"
-              aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
-              style={{ cursor: 'pointer' }}
-            >
-              {/* Handle — always on top */}
-              <div className="flex items-center justify-center" style={{ height: 10 }}>
-                <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
-              </div>
-
-              {/* City banner — transparent like radio.garden */}
-              <div className="flex items-center gap-3 px-1 py-2">
-                <div
-                  className="flex items-center justify-center shrink-0 rounded-full"
-                  style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.12)' }}
-                >
-                  <span className="text-[13px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
+            <div className="relative shrink-0 z-10">
+              <button
+                onClick={handleToggleDrawer}
+                className="w-full text-left"
+                aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
+                style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
+              >
+                {/* Handle — always on top */}
+                <div className="flex items-center justify-center" style={{ height: 10 }}>
+                  <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-[24px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[15px] text-white/80">{selectedCity.country}</h2>
-                    {localTime && <span className="text-[13px] text-white/40">{localTime}</span>}
-                    {counts.cityCount > 0 && (
-                      <span className="text-[12px] font-medium" style={{ color: '#00C864' }}>
-                        {counts.cityCount} listening now
-                      </span>
-                    )}
+
+                {/* City banner — transparent like radio.garden */}
+                <div className="flex items-center gap-3 px-1 py-2" style={{ paddingRight: 42 }}>
+                  <div
+                    className="flex items-center justify-center shrink-0 rounded-full"
+                    style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.12)' }}
+                  >
+                    <span className="text-[13px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-[24px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[15px] text-white/80">{selectedCity.country}</h2>
+                      {localTime && <span className="text-[13px] text-white/40">{localTime}</span>}
+                      {counts.cityCount > 0 && (
+                        <span className="text-[12px] font-medium" style={{ color: '#00C864' }}>
+                          {counts.cityCount} listening now
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+              </button>
+              <div style={{ position: 'absolute', top: 22, right: 4 }}>
+                <ChatIconButton onClick={() => onOpenCityChat(selectedCity)} label={`Chat about ${selectedCity.city}`} />
               </div>
-            </button>
+            </div>
 
             {/* Station list — scrollable */}
             {drawerOpen && (
@@ -258,6 +289,7 @@ function DrawerContent({
                           isCurrent={currentStation?.url === station.url}
                           onPlay={() => playStation(station)}
                           onToggleFavorite={() => toggleFavoriteAction(station, selectedCity)}
+                          onChat={() => onOpenStationChat(station)}
                           count={counts.byStation[station.url]}
                         />
                       ))}
@@ -454,6 +486,7 @@ function MobileNowPlaying({
 function MobileDrawer({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
   localTime, handleToggleDrawer, playStation, hasPlayer, counts,
+  onOpenCityChat, onOpenStationChat,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -465,6 +498,8 @@ function MobileDrawer({
   playStation: (s: Station) => void;
   hasPlayer: boolean;
   counts: ReturnType<typeof useListenerCounts>;
+  onOpenCityChat: (city: any) => void;
+  onOpenStationChat: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   const maxH = hasPlayer ? 'calc(50% - 60px)' : '50%';
@@ -480,41 +515,46 @@ function MobileDrawer({
       {selectedCity && (
         <>
           {/* Handle + Banner — click anywhere to toggle */}
-          <button
-            onClick={handleToggleDrawer}
-            className="shrink-0 pointer-events-auto text-left"
-            aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
-            style={{ cursor: 'pointer' }}
-          >
-            {/* Handle */}
-            <div className="flex items-center justify-center" style={{ height: 10 }}>
-              <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
-            </div>
+          <div className="relative shrink-0 pointer-events-auto">
+            <button
+              onClick={handleToggleDrawer}
+              className="w-full text-left"
+              aria-label={drawerOpen ? 'Collapse drawer' : 'Open drawer'}
+              style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
+            >
+              {/* Handle */}
+              <div className="flex items-center justify-center" style={{ height: 10 }}>
+                <div className="rounded-full" style={{ width: 36, height: 5, background: 'rgba(255,255,255,0.75)' }} />
+              </div>
 
-            {/* Banner */}
-            <div className="px-2 py-2">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex items-center justify-center shrink-0 rounded-full"
-                  style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)' }}
-                >
-                  <span className="text-[12px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-[20px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[13px] text-white/80">{selectedCity.country}</h2>
-                    {localTime && <span className="text-[11px] text-white/40">{localTime}</span>}
-                    {counts.cityCount > 0 && (
-                      <span className="text-[11px] font-medium" style={{ color: '#00C864' }}>
-                        {counts.cityCount} listening
-                      </span>
-                    )}
+              {/* Banner */}
+              <div className="px-2 py-2" style={{ paddingRight: 40 }}>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex items-center justify-center shrink-0 rounded-full"
+                    style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)' }}
+                  >
+                    <span className="text-[12px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-[20px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-[13px] text-white/80">{selectedCity.country}</h2>
+                      {localTime && <span className="text-[11px] text-white/40">{localTime}</span>}
+                      {counts.cityCount > 0 && (
+                        <span className="text-[11px] font-medium" style={{ color: '#00C864' }}>
+                          {counts.cityCount} listening
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
+            </button>
+            <div style={{ position: 'absolute', top: 20, right: 6 }}>
+              <ChatIconButton onClick={() => onOpenCityChat(selectedCity)} label={`Chat about ${selectedCity.city}`} size={15} />
             </div>
-          </button>
+          </div>
 
           {/* Station list — scrollable */}
           {drawerOpen && (
@@ -533,6 +573,7 @@ function MobileDrawer({
                         isCurrent={currentStation?.url === station.url}
                         onPlay={() => playStation(station)}
                         onToggleFavorite={() => toggleFavoriteAction(station, selectedCity)}
+                        onChat={() => onOpenStationChat(station)}
                         count={counts.byStation[station.url]}
                       />
                     ))}
@@ -636,13 +677,14 @@ function FavoriteHeart({
 }
 
 function StationRow({
-  station, city, isCurrent, onPlay, onToggleFavorite, count,
+  station, city, isCurrent, onPlay, onToggleFavorite, onChat, count,
 }: {
   station: Station;
   city: any;
   isCurrent: boolean;
   onPlay: () => void;
   onToggleFavorite: () => void;
+  onChat: () => void;
   count?: number;
 }) {
   return (
@@ -672,8 +714,35 @@ function StationRow({
           {count}
         </span>
       )}
+      <ChatIconButton onClick={onChat} label={`Chat about ${station.name}`} size={13} />
       <FavoriteHeart url={station.url} onToggle={onToggleFavorite} />
     </div>
+  );
+}
+
+function ChatIconButton({ onClick, label, size = 13 }: { onClick: () => void; label: string; size?: number }) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      aria-label={label}
+      title={label}
+      className="flex items-center justify-center shrink-0 rounded-full"
+      style={{
+        width: size + 12,
+        height: size + 12,
+        background: 'rgba(0,200,100,0.12)',
+        border: '1px solid rgba(0,200,100,0.35)',
+        cursor: 'pointer',
+        transition: 'background 0.15s',
+      }}
+    >
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      </svg>
+    </button>
   );
 }
 

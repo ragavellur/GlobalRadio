@@ -34,6 +34,11 @@ export interface Viewport {
   bearing: number;
 }
 
+export interface SocialRoom {
+  roomId: string;
+  roomName: string;
+}
+
 export interface RadioState {
   cities: City[];
   indexLoaded: boolean;
@@ -46,6 +51,8 @@ export interface RadioState {
   sidebarOpen: boolean;
   sidebarTab: 'search' | 'browse' | 'station';
   pendingStationUrl: string | null;
+  socialOpen: boolean;
+  socialRoom: SocialRoom | null;
 }
 
 export type TabName = 'search' | 'browse' | 'station';
