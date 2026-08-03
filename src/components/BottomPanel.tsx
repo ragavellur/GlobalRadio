@@ -593,7 +593,7 @@ function MobileDrawer({
 
       {!selectedCity && (
         <div className="flex items-center justify-center px-2 py-6 text-center text-white/40 text-sm">
-          Tap a green dot on the globe to explore radio stations v2
+          Tap a green dot on the globe to explore radio stations
         </div>
       )}
     </div>
