@@ -11,6 +11,7 @@ import { AuthProvider } from './lib/auth';
 import { FavoritesProvider } from './lib/favorites';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
+import { usePresence } from './hooks/usePresence';
 
 function IntroPlayButton() {
   const { selectedCity, indexLoaded } = useRadioStore();
@@ -49,6 +50,7 @@ function IntroPlayButton() {
 function AppContent() {
   const { selectCity } = useRadioStore();
   const { currentRoute } = useRouter();
+  usePresence();
 
   useEffect(() => {
     if (currentRoute.type === 'search') {

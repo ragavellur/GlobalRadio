@@ -5,7 +5,8 @@ import { useAuth } from '../lib/auth';
 import { useFavorites } from '../lib/favorites';
 import type { NewFavorite } from '../lib/supabase';
 import { useSignInDialog } from './SignInDialog';
-import type { Station } from '../types';
+import type { Station, City } from '../types';
+import { useListenerCounts } from '../hooks/useListenerCounts';
 
 export default function BottomPanel() {
   const {
@@ -18,6 +19,7 @@ export default function BottomPanel() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'offline'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const counts = useListenerCounts(selectedCity, !!selectedCity && drawerOpen);
 
   useEffect(() => {
     if (selectedCity) {
@@ -133,6 +135,7 @@ export default function BottomPanel() {
           handleToggleDrawer={handleToggleDrawer}
           playStation={playStation}
           togglePlayback={togglePlayback}
+          counts={counts}
         />
       </div>
 
@@ -151,6 +154,7 @@ export default function BottomPanel() {
           handleToggleDrawer={handleToggleDrawer}
           playStation={playStation}
           hasPlayer={!!currentStation}
+          counts={counts}
         />
       </div>
 
@@ -174,7 +178,7 @@ export default function BottomPanel() {
 /* ===== Shared drawer content ===== */
 function DrawerContent({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
-  isPlaying, audioStatus, localTime, handleToggleDrawer, playStation, togglePlayback,
+  isPlaying, audioStatus, localTime, handleToggleDrawer, playStation, togglePlayback, counts,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -187,6 +191,7 @@ function DrawerContent({
   handleToggleDrawer: () => void;
   playStation: (s: Station) => void;
   togglePlayback: () => void;
+  counts: ReturnType<typeof useListenerCounts>;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   const { isFavorite } = useFavorites();
@@ -225,6 +230,11 @@ function DrawerContent({
                   <div className="flex items-center gap-2">
                     <h2 className="text-[15px] text-white/80">{selectedCity.country}</h2>
                     {localTime && <span className="text-[13px] text-white/40">{localTime}</span>}
+                    {counts.cityCount > 0 && (
+                      <span className="text-[12px] font-medium" style={{ color: '#00C864' }}>
+                        {counts.cityCount} listening now
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -247,6 +257,7 @@ function DrawerContent({
                           isCurrent={currentStation?.url === station.url}
                           onPlay={() => playStation(station)}
                           onToggleFavorite={() => toggleFavoriteAction(station, selectedCity)}
+                          count={counts.byStation[station.url]}
                         />
                       ))}
                     </div>
@@ -441,7 +452,7 @@ function MobileNowPlaying({
 /* ===== Mobile drawer (bottom sheet) ===== */
 function MobileDrawer({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
-  localTime, handleToggleDrawer, playStation, hasPlayer,
+  localTime, handleToggleDrawer, playStation, hasPlayer, counts,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -452,6 +463,7 @@ function MobileDrawer({
   handleToggleDrawer: () => void;
   playStation: (s: Station) => void;
   hasPlayer: boolean;
+  counts: ReturnType<typeof useListenerCounts>;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   const maxH = hasPlayer ? 'calc(50% - 60px)' : '50%';
@@ -492,6 +504,11 @@ function MobileDrawer({
                   <div className="flex items-center gap-2">
                     <h2 className="text-[13px] text-white/80">{selectedCity.country}</h2>
                     {localTime && <span className="text-[11px] text-white/40">{localTime}</span>}
+                    {counts.cityCount > 0 && (
+                      <span className="text-[11px] font-medium" style={{ color: '#00C864' }}>
+                        {counts.cityCount} listening
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -515,6 +532,7 @@ function MobileDrawer({
                         isCurrent={currentStation?.url === station.url}
                         onPlay={() => playStation(station)}
                         onToggleFavorite={() => toggleFavoriteAction(station, selectedCity)}
+                        count={counts.byStation[station.url]}
                       />
                     ))}
                   </div>
@@ -617,13 +635,14 @@ function FavoriteHeart({
 }
 
 function StationRow({
-  station, city, isCurrent, onPlay, onToggleFavorite,
+  station, city, isCurrent, onPlay, onToggleFavorite, count,
 }: {
   station: Station;
   city: any;
   isCurrent: boolean;
   onPlay: () => void;
   onToggleFavorite: () => void;
+  count?: number;
 }) {
   return (
     <div
@@ -643,6 +662,15 @@ function StationRow({
           {station.name}
         </div>
       </button>
+      {typeof count === 'number' && count > 0 && (
+        <span
+          className="flex items-center justify-center rounded-full text-[11px] font-bold shrink-0"
+          style={{ minWidth: 22, height: 20, padding: '0 7px', background: 'rgba(0,200,100,0.15)', color: '#00C864' }}
+          title={`${count} listening now`}
+        >
+          {count}
+        </span>
+      )}
       <FavoriteHeart url={station.url} onToggle={onToggleFavorite} />
     </div>
   );

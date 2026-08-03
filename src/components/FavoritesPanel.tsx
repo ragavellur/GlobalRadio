@@ -5,6 +5,9 @@ import { useRadioStore } from '../lib/store';
 import { countryName } from '../lib/countryNames';
 import { SUPABASE_ENABLED, type Favorite } from '../lib/supabase';
 import { GoogleG } from './SignInDialog';
+import LivePanel from './LivePanel';
+import SocialPanel from './SocialPanel';
+import NotificationsPanel from './NotificationsPanel';
 
 export default function FavoritesPanel() {
   if (!SUPABASE_ENABLED) return null;
@@ -66,6 +69,10 @@ function FavoritesPanelInner() {
             </span>
           )}
         </button>
+
+        <LivePanel />
+        <SocialPanel />
+        <NotificationsPanel />
 
         <div className="relative">
           <button
