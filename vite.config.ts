@@ -15,7 +15,7 @@ export default defineConfig({
       manifest: {
         name: 'Global Radio Explorer',
         short_name: 'Global Radio',
-        description: 'Explore live radio stations from around the world on an interactive 3D globe - 2',
+        description: 'Explore live radio stations from around the world on an interactive 3D globe',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
