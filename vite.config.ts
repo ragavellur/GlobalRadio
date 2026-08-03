@@ -35,7 +35,6 @@ export default defineConfig({
         ],
       },
       workbox: {
-        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
         runtimeCaching: [
           {
