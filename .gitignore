@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 *.png
 !public/icon-*.png
 !public/favicon.png
+.DS_Store
