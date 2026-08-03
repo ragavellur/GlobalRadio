@@ -13,6 +13,7 @@ interface RadioStore extends RadioState {
   setSearchResults: (results: City[]) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarTab: (tab: 'search' | 'browse' | 'station') => void;
+  setPendingStationUrl: (url: string | null) => void;
 }
 
 const RadioContext = createContext<RadioStore | null>(null);
@@ -29,6 +30,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     searchResults: [],
     sidebarOpen: false,
     sidebarTab: 'search',
+    pendingStationUrl: null,
   });
 
   const setCities = useCallback((cities: City[]) => {
@@ -75,6 +77,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, sidebarTab: tab }));
   }, []);
 
+  const setPendingStationUrl = useCallback((url: string | null) => {
+    setState((prev) => ({ ...prev, pendingStationUrl: url }));
+  }, []);
+
   return (
     <RadioContext.Provider
       value={{
@@ -90,6 +96,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setSearchResults,
         setSidebarOpen,
         setSidebarTab,
+        setPendingStationUrl,
       }}
     >
       {children}

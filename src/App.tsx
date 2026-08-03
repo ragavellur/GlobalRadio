@@ -2,9 +2,13 @@ import { useEffect } from 'react';
 import Globe from './components/Globe';
 import SearchPanel from './components/SearchPanel';
 import BottomPanel from './components/BottomPanel';
+import FavoritesPanel from './components/FavoritesPanel';
 
 import LoadingIndicator from './components/LoadingIndicator';
 import InstallPrompt from './components/InstallPrompt';
+import { SignInDialogProvider } from './components/SignInDialog';
+import { AuthProvider } from './lib/auth';
+import { FavoritesProvider } from './lib/favorites';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
 
@@ -58,6 +62,7 @@ function AppContent() {
       <Globe />
       <BottomPanel />
       <SearchPanel />
+      <FavoritesPanel />
       <IntroPlayButton />
       <InstallPrompt />
     </div>
@@ -66,8 +71,14 @@ function AppContent() {
 
 export default function App() {
   return (
-    <RadioProvider>
-      <AppContent />
-    </RadioProvider>
+    <AuthProvider>
+      <SignInDialogProvider>
+        <FavoritesProvider>
+          <RadioProvider>
+            <AppContent />
+          </RadioProvider>
+        </FavoritesProvider>
+      </SignInDialogProvider>
+    </AuthProvider>
   );
 }

@@ -45,6 +45,7 @@ export interface RadioState {
   searchResults: City[];
   sidebarOpen: boolean;
   sidebarTab: 'search' | 'browse' | 'station';
+  pendingStationUrl: string | null;
 }
 
 export type TabName = 'search' | 'browse' | 'station';

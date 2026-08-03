@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRadioStore } from '../lib/store';
 import { findStationsForCity, filterValidStations, sortStations } from '../lib/stations';
+import { useAuth } from '../lib/auth';
+import { useFavorites } from '../lib/favorites';
+import type { NewFavorite } from '../lib/supabase';
+import { useSignInDialog } from './SignInDialog';
 import type { Station } from '../types';
 
 export default function BottomPanel() {
   const {
-    selectedCity, currentStation, isPlaying,
-    playStation, pausePlayback,
+    selectedCity, currentStation, isPlaying, pendingStationUrl,
+    playStation, pausePlayback, setPendingStationUrl,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -24,11 +28,15 @@ export default function BottomPanel() {
           const filtered = sortStations(filterValidStations(data));
           setStations(filtered);
           setLoadingStations(false);
+          setPendingStationUrl(null);
           if (filtered.length > 0) {
-            playStation(filtered[0]);
+            const pending = pendingStationUrl
+              ? filtered.find((s) => s.url === pendingStationUrl)
+              : null;
+            playStation(pending ?? filtered[0]);
           }
         })
-        .catch(() => { setStations([]); setLoadingStations(false); });
+        .catch(() => { setStations([]); setLoadingStations(false); setPendingStationUrl(null); });
     } else {
       setStations([]);
     }
@@ -180,6 +188,10 @@ function DrawerContent({
   playStation: (s: Station) => void;
   togglePlayback: () => void;
 }) {
+  const toggleFavoriteAction = useFavoriteAction();
+  const { isFavorite } = useFavorites();
+  const currentFav = currentStation && selectedCity ? isFavorite(currentStation.url) : false;
+
   return (
     <>
       {/* Drawer area — flex-end so content sits at bottom */}
@@ -228,22 +240,14 @@ function DrawerContent({
                     </div>
                     <div>
                       {stations.map((station, i) => (
-                        <button
+                        <StationRow
                           key={`${station.url}-${i}`}
-                          onClick={(e) => { e.stopPropagation(); playStation(station); }}
-                          className="w-full text-left px-4 py-[8px] transition-colors"
-                          style={{
-                            background: currentStation?.url === station.url ? 'rgba(0,200,100,0.15)' : 'transparent',
-                            borderTop: '1px solid rgba(255,255,255,0.06)',
-                          }}
-                        >
-                          <div
-                            className="text-[14px] truncate"
-                            style={{ color: currentStation?.url === station.url ? '#00C864' : 'white' }}
-                          >
-                            {station.name}
-                          </div>
-                        </button>
+                          station={station}
+                          city={selectedCity}
+                          isCurrent={currentStation?.url === station.url}
+                          onPlay={() => playStation(station)}
+                          onToggleFavorite={() => toggleFavoriteAction(station, selectedCity)}
+                        />
                       ))}
                     </div>
                   </div>
@@ -287,8 +291,13 @@ function DrawerContent({
                 {audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
               </div>
             </div>
-            <button className="ml-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0" title="Add to favorites">
-              <svg width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="white" strokeWidth="2">
+            <button
+              onClick={() => toggleFavoriteAction(currentStation, selectedCity)}
+              className="ml-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
+              title={currentFav ? 'Remove from favorites' : 'Add to favorites'}
+              aria-label="Add to favorites"
+            >
+              <svg width="20" height="20" viewBox="0 0 32 32" fill={currentFav ? '#00C864' : 'none'} stroke={currentFav ? '#00C864' : 'white'} strokeWidth="2">
                 <path d="M10.4 7.5C7.66 7.5 5.5 9.63 5.5 12.33c0 3.52 2.24 6.55 10.5 13.17 8.26-6.63 10.5-9.66 10.5-13.17 0-2.7-2.16-4.83-4.9-4.83-2.45 0-3.78 1.43-4.81 2.62l-.79.9-.79-.9C14.17 8.97 12.85 7.5 10.4 7.5z" />
               </svg>
             </button>
@@ -357,6 +366,7 @@ function MobileNowPlaying({
   stations: Station[];
   togglePlayback: () => void;
 }) {
+  const toggleFavoriteAction = useFavoriteAction();
   return (
     <div
       className="shrink-0 rounded-t-lg overflow-hidden pointer-events-auto"
@@ -373,6 +383,11 @@ function MobileNowPlaying({
             {audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
           </div>
         </div>
+        <FavoriteHeart
+          url={currentStation.url}
+          onToggle={() => toggleFavoriteAction(currentStation, selectedCity)}
+          size={20}
+        />
       </div>
       <div className="flex items-center justify-center px-2 pb-2 gap-2">
         <PlayButton
@@ -438,6 +453,7 @@ function MobileDrawer({
   playStation: (s: Station) => void;
   hasPlayer: boolean;
 }) {
+  const toggleFavoriteAction = useFavoriteAction();
   const maxH = hasPlayer ? 'calc(50% - 60px)' : '50%';
 
   return (
@@ -492,22 +508,14 @@ function MobileDrawer({
                   </div>
                   <div>
                     {stations.map((station, i) => (
-                      <button
+                      <StationRow
                         key={`${station.url}-${i}`}
-                        onClick={(e) => { e.stopPropagation(); playStation(station); }}
-                        className="w-full text-left px-4 py-[10px] transition-colors"
-                        style={{
-                          background: currentStation?.url === station.url ? 'rgba(0,200,100,0.15)' : 'transparent',
-                          borderTop: '1px solid rgba(255,255,255,0.06)',
-                        }}
-                      >
-                        <div
-                          className="text-[14px] truncate"
-                          style={{ color: currentStation?.url === station.url ? '#00C864' : 'white' }}
-                        >
-                          {station.name}
-                        </div>
-                      </button>
+                        station={station}
+                        city={selectedCity}
+                        isCurrent={currentStation?.url === station.url}
+                        onPlay={() => playStation(station)}
+                        onToggleFavorite={() => toggleFavoriteAction(station, selectedCity)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -555,6 +563,88 @@ function PlayButton({
     >
       {children}
     </button>
+  );
+}
+
+/* ===== Favorite helpers ===== */
+function useFavoriteAction() {
+  const { user } = useAuth();
+  const { toggleFavorite } = useFavorites();
+  const { openSignInDialog } = useSignInDialog();
+
+  return useCallback(
+    (station: Station, city: any) => {
+      if (!city) return;
+      const fav: NewFavorite = {
+        country_code: city.country,
+        city: city.city,
+        city_key: `${city.city},${city.country}`,
+        station_name: station.name,
+        station_url: station.url,
+      };
+      if (!user) {
+        openSignInDialog(fav);
+        return;
+      }
+      toggleFavorite(fav);
+    },
+    [user, toggleFavorite, openSignInDialog]
+  );
+}
+
+function FavoriteHeart({
+  url, onToggle, size = 18,
+}: {
+  url: string;
+  onToggle: () => void;
+  size?: number;
+}) {
+  const { isFavorite } = useFavorites();
+  const active = isFavorite(url);
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={active ? 'Remove from favorites' : 'Add to favorites'}
+      title={active ? 'Remove from favorites' : 'Add to favorites'}
+      className="flex items-center justify-center shrink-0 rounded-full hover:bg-white/10 transition-colors"
+      style={{ width: size + 12, height: size + 12, cursor: 'pointer', border: 'none', background: 'transparent' }}
+    >
+      <svg width={size} height={size} viewBox="0 0 32 32" fill={active ? '#00C864' : 'none'} stroke={active ? '#00C864' : 'rgba(255,255,255,0.55)'} strokeWidth="2">
+        <path d="M10.4 7.5C7.66 7.5 5.5 9.63 5.5 12.33c0 3.52 2.24 6.55 10.5 13.17 8.26-6.63 10.5-9.66 10.5-13.17 0-2.7-2.16-4.83-4.9-4.83-2.45 0-3.78 1.43-4.81 2.62l-.79.9-.79-.9C14.17 8.97 12.85 7.5 10.4 7.5z" />
+      </svg>
+    </button>
+  );
+}
+
+function StationRow({
+  station, city, isCurrent, onPlay, onToggleFavorite,
+}: {
+  station: Station;
+  city: any;
+  isCurrent: boolean;
+  onPlay: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <div
+      className="w-full flex items-center gap-1 px-4 py-2 transition-colors"
+      style={{
+        background: isCurrent ? 'rgba(0,200,100,0.15)' : 'transparent',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <button
+        onClick={onPlay}
+        className="flex-1 min-w-0 text-left"
+        style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
+        aria-label={`Play ${station.name}`}
+      >
+        <div className="text-[14px] truncate" style={{ color: isCurrent ? '#00C864' : 'white' }} dir="auto">
+          {station.name}
+        </div>
+      </button>
+      <FavoriteHeart url={station.url} onToggle={onToggleFavorite} />
+    </div>
   );
 }
 
