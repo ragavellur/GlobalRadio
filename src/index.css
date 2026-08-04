@@ -17,6 +17,12 @@ html, body, #root {
   color: #ffffff;
 }
 
+@supports (height: 100dvh) {
+  html, body, #root {
+    height: 100dvh;
+  }
+}
+
 .maplibregl-map {
   width: 100%;
   height: 100%;

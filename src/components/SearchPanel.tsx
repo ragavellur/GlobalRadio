@@ -3,11 +3,13 @@ import { useRadioStore } from '../lib/store';
 import { searchCities } from '../lib/search';
 
 export default function SearchPanel() {
-  const { selectCity } = useRadioStore();
+  const { selectCity, drawerOpen, selectedCity } = useRadioStore();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const hideOnMobile = drawerOpen && !!selectedCity;
 
   const handleSearch = (q: string) => {
     setQuery(q);
@@ -50,7 +52,9 @@ export default function SearchPanel() {
   return (
     <>
       {/* Search input — responsive positioning */}
-      <div className="absolute top-2 sm:top-[15px] left-1/2 -translate-x-1/2 z-20 w-[calc(100%-16px)] sm:w-auto max-w-[340px]">
+      <div
+        className={`absolute top-2 sm:top-[15px] left-1/2 -translate-x-1/2 z-20 w-[calc(100%-16px)] sm:w-auto max-w-[340px] ${hideOnMobile ? 'hidden sm:block' : ''}`}
+      >
         <input
           ref={inputRef}
           type="text"
@@ -65,7 +69,7 @@ export default function SearchPanel() {
       </div>
 
       {/* Results dropdown */}
-      {isOpen && results.length > 0 && (
+      {!hideOnMobile && isOpen && results.length > 0 && (
         <div
           className="absolute top-[44px] sm:top-[55px] left-1/2 -translate-x-1/2 z-30 w-[calc(100%-16px)] sm:w-[340px] max-h-[400px] overflow-y-auto rounded-lg"
           style={{ background: '#191919', border: '1px solid rgba(255,255,255,0.1)' }}

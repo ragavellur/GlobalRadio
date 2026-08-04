@@ -13,6 +13,7 @@ interface RadioStore extends RadioState {
   setSearchResults: (results: City[]) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarTab: (tab: 'search' | 'browse' | 'station') => void;
+  setDrawerOpen: (open: boolean) => void;
   setPendingStationUrl: (url: string | null) => void;
   openSocial: () => void;
   openSocialRoom: (room: SocialRoom) => void;
@@ -35,6 +36,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     searchResults: [],
     sidebarOpen: false,
     sidebarTab: 'search',
+    drawerOpen: true,
     pendingStationUrl: null,
     socialOpen: false,
     socialRoom: null,
@@ -85,6 +87,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, sidebarTab: tab }));
   }, []);
 
+  const setDrawerOpen = useCallback((open: boolean) => {
+    setState((prev) => ({ ...prev, drawerOpen: open }));
+  }, []);
+
   const setPendingStationUrl = useCallback((url: string | null) => {
     setState((prev) => ({ ...prev, pendingStationUrl: url }));
   }, []);
@@ -124,6 +130,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setSearchResults,
         setSidebarOpen,
         setSidebarTab,
+        setDrawerOpen,
         setPendingStationUrl,
         openSocial,
         openSocialRoom,

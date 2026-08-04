@@ -62,6 +62,7 @@ export interface RadioState {
   searchResults: City[];
   sidebarOpen: boolean;
   sidebarTab: 'search' | 'browse' | 'station';
+  drawerOpen: boolean;
   pendingStationUrl: string | null;
   socialOpen: boolean;
   socialRoom: SocialRoom | null;

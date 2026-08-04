@@ -14,13 +14,12 @@ import SonosButton from './SonosButton';
 
 export default function BottomPanel() {
   const {
-    selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession,
-    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, openSocialRoom,
+    selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession, drawerOpen,
+    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, openSocialRoom, setDrawerOpen,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
   const [loadingStations, setLoadingStations] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(true);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'offline'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sonosSessionRef = useRef(sonosSession);
@@ -150,8 +149,8 @@ export default function BottomPanel() {
   const localTime = selectedCity ? getLocalTime(selectedCity.lon) : '';
 
   const handleToggleDrawer = useCallback(() => {
-    setDrawerOpen((prev) => !prev);
-  }, []);
+    setDrawerOpen(!drawerOpen);
+  }, [drawerOpen, setDrawerOpen]);
 
   const handleOpenCityChat = useCallback(
     (city: any) => {
@@ -200,8 +199,8 @@ export default function BottomPanel() {
 
       {/* === Mobile panel (bottom sheet) === */}
       <div
-        className="sm:hidden absolute inset-x-0 z-10 pointer-events-none"
-        style={{ bottom: currentStation ? 90 : 0, maxHeight: currentStation ? 'calc(100% - 90px)' : '100%', overflow: 'hidden' }}
+        className="sm:hidden absolute inset-x-0 z-10 pointer-events-none flex flex-col justify-end"
+        style={{ top: 0, bottom: currentStation ? 102 : 0, overflow: 'hidden' }}
       >
         <MobileDrawer
           selectedCity={selectedCity}
@@ -552,13 +551,13 @@ function MobileDrawer({
   onOpenStationChat: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
-  const maxH = hasPlayer ? 'calc(50% - 60px)' : '50%';
+  const maxH = hasPlayer ? '50%' : '50%';
 
   return (
     <div
       className="shrink-0 rounded-t-lg overflow-hidden flex flex-col"
       style={{
-        maxHeight: drawerOpen ? maxH : (hasPlayer ? 50 : 60),
+        maxHeight: drawerOpen ? maxH : 72,
         transition: 'max-height 0.2s ease',
       }}
     >
