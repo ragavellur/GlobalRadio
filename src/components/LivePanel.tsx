@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRadioStore } from '../lib/store';
 import { useLiveStations } from '../hooks/useLiveStations';
+import { useUserDirectory } from '../hooks/useUserDirectory';
+import { useDMs } from '../hooks/useDMs';
+import { useAuth } from '../lib/auth';
+import { useSignInDialog } from './SignInDialog';
 import { SUPABASE_ENABLED, type LiveStation } from '../lib/social';
 import { stationRoomId } from '../lib/social';
 import SlidePanel from './SlidePanel';
+import ChatScreen, { ChatAvatar as Avatar } from './ChatScreen';
 import { countryName } from '../lib/countryNames';
 
 export default function LivePanel() {
@@ -14,8 +19,17 @@ export default function LivePanel() {
 
 function LivePanelInner() {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const stations = useLiveStations(open);
+  const listeners = useUserDirectory(open && !!expanded, { stationUrl: expanded ?? undefined });
+  const dms = useDMs(open, 'live');
+  const { user } = useAuth();
+  const { openSignInDialog } = useSignInDialog();
   const { cities, selectedCity, playStation, setPendingStationUrl, openSocialRoom } = useRadioStore();
+
+  const meId = user?.id ?? null;
+  const onlineListeners = listeners.filter((u) => u.online && u.user_id !== meId);
+  const dmPeer = dms.openId ? dms.conversations.find((c) => c.conversation_id === dms.openId) : null;
 
   const play = (ls: LiveStation) => {
     setOpen(false);
@@ -32,6 +46,15 @@ function LivePanelInner() {
     } else {
       playStation(station);
     }
+  };
+
+  const messageUser = (peerId: string) => {
+    if (peerId === meId) return;
+    if (!meId) {
+      openSignInDialog();
+      return;
+    }
+    void dms.startConversation(peerId);
   };
 
   return (
@@ -77,54 +100,134 @@ function LivePanelInner() {
             </div>
           )}
           {stations.map((ls) => (
-            <div
-              key={ls.station_url}
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <button
-              onClick={() => play(ls)}
-              className="flex-1 min-w-0 flex items-center gap-2 text-left"
-              style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
-            >
-              <span
-                className="flex items-center justify-center rounded-full text-[11px] font-bold shrink-0"
-                style={{ minWidth: 34, height: 22, padding: '0 8px', background: 'rgba(0,200,100,0.15)', color: '#00C864' }}
+            <div key={ls.station_url}>
+              <div
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
               >
-                {ls.listeners}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[13px] text-white truncate" dir="auto">{ls.station_name}</span>
-                <span className="block text-[11px] text-white/40 truncate">
-                  {countryName(ls.country)} · {ls.city}
-                </span>
-              </span>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                void stationRoomId(ls.station_url).then((id) =>
-                  openSocialRoom({ roomId: id, roomName: ls.station_name })
-                );
-              }}
-              aria-label={`Chat about ${ls.station_name}`}
-              title={`Chat about ${ls.station_name}`}
-              className="flex items-center justify-center shrink-0 rounded-full"
-              style={{
-                width: 26,
-                height: 26,
-                background: 'rgba(0,200,100,0.12)',
-                border: '1px solid rgba(0,200,100,0.35)',
-                cursor: 'pointer',
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-            </button>
-          </div>
-        ))}
+                <button
+                  onClick={() => play(ls)}
+                  className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                  style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
+                >
+                  <span
+                    className="flex items-center justify-center rounded-full text-[11px] font-bold shrink-0"
+                    style={{ minWidth: 34, height: 22, padding: '0 8px', background: 'rgba(0,200,100,0.15)', color: '#00C864' }}
+                  >
+                    {ls.listeners}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] text-white truncate" dir="auto">{ls.station_name}</span>
+                    <span className="block text-[11px] text-white/40 truncate">
+                      {countryName(ls.country)} · {ls.city}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => setExpanded(expanded === ls.station_url ? null : ls.station_url)}
+                  aria-label={`Who's listening at ${ls.station_name}`}
+                  title="Who's listening"
+                  className="flex items-center justify-center shrink-0 rounded-full"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    background: 'rgba(255,255,255,0.08)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.7)"
+                    strokeWidth="2.5"
+                    style={{ transform: expanded === ls.station_url ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+                  >
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void stationRoomId(ls.station_url).then((id) =>
+                      openSocialRoom({ roomId: id, roomName: ls.station_name })
+                    );
+                  }}
+                  aria-label={`Chat about ${ls.station_name}`}
+                  title={`Chat about ${ls.station_name}`}
+                  className="flex items-center justify-center shrink-0 rounded-full"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    background: 'rgba(0,200,100,0.12)',
+                    border: '1px solid rgba(0,200,100,0.35)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                </button>
+              </div>
+              {expanded === ls.station_url && (
+                <div style={{ background: 'rgba(0,0,0,0.25)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div className="px-4 pt-2 pb-1 text-[11px] text-white/50">
+                    {onlineListeners.length > 0
+                      ? `${onlineListeners.length} listener${onlineListeners.length === 1 ? '' : 's'} now`
+                      : 'No one else listening right now'}
+                  </div>
+                  {onlineListeners.map((u) => (
+                    <div key={u.user_id} className="flex items-center gap-2 px-4 py-1.5">
+                      <Avatar url={u.avatar_url} name={u.display_name} size={26} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] text-white truncate">{u.display_name || 'Radio listener'}</div>
+                      </div>
+                      <button
+                        onClick={() => messageUser(u.user_id)}
+                        aria-label={`Message ${u.display_name || 'listener'}`}
+                        title={`Message ${u.display_name || 'listener'}`}
+                        className="flex items-center justify-center shrink-0 rounded-full text-[11px] font-medium"
+                        style={{
+                          padding: '3px 11px',
+                          background: 'rgba(0,200,100,0.12)',
+                          border: '1px solid rgba(0,200,100,0.35)',
+                          color: '#00C864',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        Message
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </SlidePanel>,
+        document.body
+      )}
+
+      {/* Direct message chat opened from a listener row */}
+      {createPortal(
+        dms.openId ? (
+          <ChatScreen
+            title={dmPeer?.other.display_name || 'Conversation'}
+            subtitle="Direct message"
+            avatarUrl={dmPeer?.other.avatar_url ?? null}
+            messages={dms.messages}
+            meId={meId}
+            showNames={false}
+            loading={dms.messagesLoading}
+            emptyText="No messages yet. Say hello!"
+            onSend={(text) => dms.send(text)}
+            onBack={() => dms.openConversation('')}
+            onRequireSignIn={() => openSignInDialog()}
+          />
+        ) : null,
         document.body
       )}
     </>

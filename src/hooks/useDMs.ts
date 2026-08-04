@@ -25,7 +25,7 @@ export interface DmState {
   refresh: () => Promise<void>;
 }
 
-export function useDMs(active: boolean): DmState {
+export function useDMs(active: boolean, channelKey?: string): DmState {
   const { user } = useAuth();
   const hb = useHeartbeat();
   const meId = user?.id ?? null;
@@ -35,6 +35,8 @@ export function useDMs(active: boolean): DmState {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const lastRefreshRef = useRef(0);
+  const inboxTopic = channelKey ? `dm-inbox:${channelKey}` : 'dm-inbox';
+  const dmTopic = channelKey ? (openId: string) => `dm:${channelKey}:${openId}` : (openId: string) => `dm:${openId}`;
 
   const refresh = useCallback(async () => {
     if (!SUPABASE_ENABLED) return;
@@ -69,7 +71,7 @@ export function useDMs(active: boolean): DmState {
     let inboxChannel: RealtimeChannel | null = null;
     if (supabase) {
       inboxChannel = supabase
-        .channel('dm-inbox')
+        .channel(inboxTopic)
         .on(
           'postgres_changes',
           {
@@ -119,7 +121,7 @@ export function useDMs(active: boolean): DmState {
     void markConversationRead(openId);
 
     const channel = sb
-      .channel(`dm:${openId}`)
+      .channel(dmTopic(openId))
       .on(
         'postgres_changes',
         {
