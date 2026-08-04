@@ -188,3 +188,15 @@ input[type="range"]::-moz-range-thumb {
     scroll-behavior: auto;
   }
 }
+
+/* Slide-in panels keep a gap from the right screen edge on small screens
+   so the close button never sits flush against the bezel. */
+.grx-slide-panel {
+  right: max(12px, env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .grx-slide-panel {
+    right: 0;
+  }
+}

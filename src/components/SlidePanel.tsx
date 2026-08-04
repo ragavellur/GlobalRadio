@@ -23,12 +23,12 @@ export default function SlidePanel({
       onClick={onClose}
     >
       <div
-        className="absolute top-0 bottom-0 right-0 flex flex-col"
+        className="absolute top-0 bottom-0 grx-slide-panel flex flex-col"
         style={{ width, maxWidth: '92vw', background: '#191919', zIndex: 40 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="flex items-center justify-between px-4 py-4"
+          className="flex items-center justify-between pl-4 pr-5 py-4"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="min-w-0">

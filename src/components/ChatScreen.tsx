@@ -310,7 +310,35 @@ function Composer({
   );
 }
 
-/* -------------------------------- Screen --------------------------------- */
+/* ----------------------------- Viewport ---------------------------------- */
+
+/* iOS Safari does not reliably grow/shrink 100dvh with the keyboard or URL
+   bar. Track the visual viewport so the composer stays above the keyboard,
+   the header stays on-screen, and the overlay width never changes. */
+function useVisualViewport() {
+  const [rect, setRect] = useState(() => {
+    const vv = window.visualViewport;
+    return { top: vv ? vv.offsetTop : 0, height: vv ? vv.height : window.innerHeight };
+  });
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setRect({ top: vv.offsetTop, height: vv.height });
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  return rect;
+}
+
+/* ------------------------------- Screen --------------------------------- */
 
 export default function ChatScreen({
   title,
@@ -342,6 +370,7 @@ export default function ChatScreen({
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const stickRef = useRef(true);
+  const vv = useVisualViewport();
 
   const lastMsgId = messages.length ? messages[messages.length - 1].id : null;
 
@@ -395,8 +424,15 @@ export default function ChatScreen({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'var(--gr-chat-bg)', height: '100dvh' }}
+      className="fixed z-50 flex flex-col"
+      style={{
+        background: 'var(--gr-chat-bg)',
+        top: vv.top,
+        left: 0,
+        width: '100vw',
+        height: vv.height,
+        overscrollBehavior: 'contain',
+      }}
     >
       {/* Fixed header */}
       <header
