@@ -63,7 +63,7 @@ export default function SearchPanel() {
           onFocus={() => query.length > 1 && setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 200)}
           placeholder="Search city..."
-          className="w-full sm:w-[280px] px-4 py-2 rounded-full text-[14px] text-white placeholder-white/40 outline-none transition-all sm:focus:w-[340px]"
+          className="w-full sm:w-[280px] px-4 py-2 rounded-full text-base text-white placeholder-white/40 outline-none transition-all sm:focus:w-[340px]"
           style={{ background: 'rgba(25,25,25,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}
         />
       </div>

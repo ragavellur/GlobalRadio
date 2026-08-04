@@ -279,7 +279,7 @@ function Composer({
           disabled={disabled}
           name="message"
           aria-label="Message"
-          className="grx-chat-focus block min-h-[48px] w-full flex-1 resize-none rounded-2xl px-4 py-3 text-[15px] leading-6 outline-none disabled:opacity-60"
+          className="grx-chat-focus block min-h-[48px] w-full flex-1 resize-none rounded-2xl px-4 py-3 text-base leading-6 outline-none disabled:opacity-60"
           style={{
             background: 'var(--gr-chat-field)',
             color: 'var(--gr-chat-field-text)',
