@@ -57,5 +57,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/maplibre-gl') || id.includes('node_modules/@maplibre')) return 'maplibre';
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) return 'react';
+          if (id.includes('node_modules/@supabase')) return 'supabase';
+        },
+      },
+    },
   },
 });

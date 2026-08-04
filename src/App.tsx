@@ -5,7 +5,6 @@ import BottomPanel from './components/BottomPanel';
 import FavoritesPanel from './components/FavoritesPanel';
 
 import LoadingIndicator from './components/LoadingIndicator';
-import InstallPrompt from './components/InstallPrompt';
 import { SignInDialogProvider } from './components/SignInDialog';
 import { AuthProvider } from './lib/auth';
 import { FavoritesProvider } from './lib/favorites';
@@ -68,7 +67,6 @@ function AppContent() {
         <SearchPanel />
         <FavoritesPanel />
         <IntroPlayButton />
-        <InstallPrompt />
         {resume && (
           <SonosResumeBanner
             session={resume}

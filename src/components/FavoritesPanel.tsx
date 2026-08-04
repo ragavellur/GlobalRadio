@@ -6,6 +6,7 @@ import { useRadioStore } from '../lib/store';
 import { countryName } from '../lib/countryNames';
 import { SUPABASE_ENABLED, type Favorite } from '../lib/supabase';
 import { GoogleG } from './SignInDialog';
+import InstallButton from './InstallButton';
 import LivePanel from './LivePanel';
 import SocialPanel from './SocialPanel';
 import NotificationsPanel from './NotificationsPanel';
@@ -53,6 +54,7 @@ function FavoritesPanelInner() {
     <>
       {/* Top-right buttons */}
       <div className={`absolute z-30 flex gap-2 top-14 sm:top-4 right-2 sm:right-4 ${hideOnMobile ? 'hidden sm:flex' : ''}`}>
+        <InstallButton />
         <button
           onClick={() => { setPanelOpen(true); setAccountOpen(false); }}
           aria-label="My favorites"
