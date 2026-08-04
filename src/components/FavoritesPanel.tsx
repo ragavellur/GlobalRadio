@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
 import { useFavorites } from '../lib/favorites';
 import { useRadioStore } from '../lib/store';
@@ -17,9 +18,11 @@ export default function FavoritesPanel() {
 function FavoritesPanelInner() {
   const { user, signInWithGoogle, signOut } = useAuth();
   const { favorites, loading, removeFavorite } = useFavorites();
-  const { cities, selectedCity, selectCity, playStation, setPendingStationUrl } = useRadioStore();
+  const { cities, selectedCity, selectCity, playStation, setPendingStationUrl, drawerOpen } = useRadioStore();
   const [panelOpen, setPanelOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+
+  const hideOnMobile = drawerOpen && !!selectedCity;
 
   const playFavorite = (fav: Favorite) => {
     setPanelOpen(false);
@@ -49,7 +52,7 @@ function FavoritesPanelInner() {
   return (
     <>
       {/* Top-right buttons */}
-      <div className="absolute z-30 flex gap-2 top-14 sm:top-4 right-2 sm:right-4">
+      <div className={`absolute z-30 flex gap-2 top-14 sm:top-4 right-2 sm:right-4 ${hideOnMobile ? 'hidden sm:flex' : ''}`}>
         <button
           onClick={() => { setPanelOpen(true); setAccountOpen(false); }}
           aria-label="My favorites"
@@ -131,8 +134,9 @@ function FavoritesPanelInner() {
       </div>
 
       {/* Favorites slide-in panel */}
-      {panelOpen && (
-        <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setPanelOpen(false)}>
+      {panelOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setPanelOpen(false)}>
           <div
             className="absolute top-0 bottom-0 right-0 w-[320px] max-w-[90vw] flex flex-col"
             style={{ background: '#191919', zIndex: 40 }}
@@ -208,7 +212,8 @@ function FavoritesPanelInner() {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

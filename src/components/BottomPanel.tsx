@@ -551,13 +551,12 @@ function MobileDrawer({
   onOpenStationChat: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
-  const maxH = hasPlayer ? '50%' : '50%';
 
   return (
     <div
       className="shrink-0 rounded-t-lg overflow-hidden flex flex-col"
       style={{
-        maxHeight: drawerOpen ? maxH : 72,
+        maxHeight: drawerOpen ? 'calc(100% - 24px)' : 72,
         transition: 'max-height 0.2s ease',
       }}
     >

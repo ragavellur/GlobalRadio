@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRadioStore } from '../lib/store';
 import { useLiveStations } from '../hooks/useLiveStations';
 import { SUPABASE_ENABLED, type LiveStation } from '../lib/social';
@@ -63,21 +64,22 @@ function LivePanelInner() {
         </span>
       </button>
 
-      <SlidePanel
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Listening now"
-        subtitle={stations.length > 0 ? `${stations.length} station${stations.length === 1 ? '' : 's'} live` : 'Updating…'}
-      >
-        {stations.length === 0 && (
-          <div className="p-6 text-center text-white/40 text-[13px]">
-            No one is listening to any station right now.
-          </div>
-        )}
-        {stations.map((ls) => (
-          <div
-            key={ls.station_url}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
+      {createPortal(
+        <SlidePanel
+          open={open}
+          onClose={() => setOpen(false)}
+          title="Listening now"
+          subtitle={stations.length > 0 ? `${stations.length} station${stations.length === 1 ? '' : 's'} live` : 'Updating…'}
+        >
+          {stations.length === 0 && (
+            <div className="p-6 text-center text-white/40 text-[13px]">
+              No one is listening to any station right now.
+            </div>
+          )}
+          {stations.map((ls) => (
+            <div
+              key={ls.station_url}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
             style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
           >
             <button
@@ -122,7 +124,9 @@ function LivePanelInner() {
             </button>
           </div>
         ))}
-      </SlidePanel>
+        </SlidePanel>,
+        document.body
+      )}
     </>
   );
 }

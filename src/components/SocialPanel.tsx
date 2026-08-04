@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
 import { useRadioStore } from '../lib/store';
 import { useSignInDialog } from './SignInDialog';
@@ -77,51 +78,60 @@ function SocialPanelInner() {
       </button>
 
       {socialRoom ? (
-        <ChatScreen
-          title={socialRoom.roomName}
-          subtitle="Group chat"
-          messages={chat.messages}
-          meId={user?.id ?? null}
-          showNames
-          loading={chat.loading}
-          emptyText="No messages yet. Say hello!"
-          onSend={async (text) => {
-            await chat.send(text);
-            return true;
-          }}
-          onBack={closeSocial}
-          onRequireSignIn={() => openSignInDialog()}
-        />
-      ) : socialOpen && dms.openId ? (
-        <ChatScreen
-          title={openConv?.other.display_name || 'Conversation'}
-          subtitle="Direct message"
-          avatarUrl={openConv?.other.avatar_url ?? null}
-          messages={dms.messages}
-          meId={user?.id ?? null}
-          showNames={false}
-          loading={dms.messagesLoading}
-          emptyText="No messages yet. Say hello!"
-          onSend={(text) => dms.send(text)}
-          onBack={() => dms.openConversation('')}
-          onRequireSignIn={() => openSignInDialog()}
-        />
-      ) : (
-        <SlidePanel
-          open={socialOpen}
-          onClose={closeSocial}
-          title="People"
-          subtitle="Find listeners & message them"
-        >
-          <PeopleView
-            city={city}
-            station={station}
-            dms={dms}
+        createPortal(
+          <ChatScreen
+            title={socialRoom.roomName}
+            subtitle="Group chat"
+            messages={chat.messages}
             meId={user?.id ?? null}
-            onDm={startDmTo}
+            showNames
+            loading={chat.loading}
+            emptyText="No messages yet. Say hello!"
+            onSend={async (text) => {
+              await chat.send(text);
+              return true;
+            }}
+            onBack={closeSocial}
             onRequireSignIn={() => openSignInDialog()}
-          />
-        </SlidePanel>
+          />,
+          document.body
+        )
+      ) : socialOpen && dms.openId ? (
+        createPortal(
+          <ChatScreen
+            title={openConv?.other.display_name || 'Conversation'}
+            subtitle="Direct message"
+            avatarUrl={openConv?.other.avatar_url ?? null}
+            messages={dms.messages}
+            meId={user?.id ?? null}
+            showNames={false}
+            loading={dms.messagesLoading}
+            emptyText="No messages yet. Say hello!"
+            onSend={(text) => dms.send(text)}
+            onBack={() => dms.openConversation('')}
+            onRequireSignIn={() => openSignInDialog()}
+          />,
+          document.body
+        )
+      ) : (
+        createPortal(
+          <SlidePanel
+            open={socialOpen}
+            onClose={closeSocial}
+            title="People"
+            subtitle="Find listeners & message them"
+          >
+            <PeopleView
+              city={city}
+              station={station}
+              dms={dms}
+              meId={user?.id ?? null}
+              onDm={startDmTo}
+              onRequireSignIn={() => openSignInDialog()}
+            />
+          </SlidePanel>,
+          document.body
+        )
       )}
     </>
   );

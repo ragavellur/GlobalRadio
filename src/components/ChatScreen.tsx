@@ -214,7 +214,7 @@ export function ChatMessageList({
     );
   }
   return (
-    <div className="mx-auto max-w-[1000px] px-4 pb-8 pt-4 sm:px-6 sm:pt-6 lg:px-10">
+    <div className="mx-auto max-w-[1000px] px-5 pb-8 pt-4 sm:px-6 sm:pt-6 lg:px-10">
       {rows}
     </div>
   );
@@ -261,7 +261,7 @@ function Composer({
         </div>
       )}
       <div
-        className="mx-auto flex max-w-[1000px] items-end gap-2 px-4 pt-2 sm:px-6 lg:px-10"
+        className="mx-auto flex max-w-[1000px] items-end gap-2 px-5 pt-2 sm:px-6 lg:px-10"
         style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
       >
         <textarea
@@ -396,7 +396,7 @@ export default function ChatScreen({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'var(--gr-chat-bg)' }}
+      style={{ background: 'var(--gr-chat-bg)', height: '100dvh' }}
     >
       {/* Fixed header */}
       <header
