@@ -37,7 +37,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-        globIgnores: ['**/sonos-callback.html'],
+        globIgnores: ['**/stations_search.json', '**/sonos-callback.html'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/sonos-callback\.html/],
         runtimeCaching: [

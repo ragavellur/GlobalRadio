@@ -100,7 +100,6 @@ export default function Globe() {
 
     m.on('load', () => {
       try { m.setProjection({ type: 'globe' }); } catch {}
-      loadCityIndex(m);
 
       rotationActiveRef.current = true;
         const rotate = () => {
@@ -111,6 +110,10 @@ export default function Globe() {
         };
         rotationRef.current = requestAnimationFrame(rotate);
     });
+
+    // Load the search index independently of the map's 'load' event so
+    // city/station search works even while satellite tiles are still loading.
+    void loadCityIndex(m);
 
     m.on('click', (e: maplibregl.MapMouseEvent) => {
       const city = findNearestCityFromPoint(e.point.x, e.point.y, m, citiesRef.current, 10);
@@ -183,7 +186,11 @@ export default function Globe() {
       initSearch(data);
       setIndexLoaded(true);
 
-      addDotLayer(m, data);
+      if (m.loaded()) {
+        addDotLayer(m, data);
+      } else {
+        m.once('load', () => addDotLayer(m, data));
+      }
     } catch (err) {
       console.error('Failed to load city index:', err);
     }

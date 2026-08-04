@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "generate-icons": "node scripts/generate-icons.mjs",
-    "build": "npm run generate-icons && tsc && vite build && cp -r public/data dist/ && cp dist/index.html dist/404.html",
+    "build": "npm run generate-icons && node scripts/build-station-index.mjs && tsc && vite build && cp -r public/data dist/ && cp dist/index.html dist/404.html",
     "preview": "vite preview"
   },
   "keywords": [
