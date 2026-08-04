@@ -12,6 +12,8 @@ import { FavoritesProvider } from './lib/favorites';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
 import { HeartbeatProvider } from './hooks/useHeartbeat';
+import { useSonosSession } from './hooks/useSonosSession';
+import SonosResumeBanner from './components/SonosResumeBanner';
 
 function IntroPlayButton() {
   const { selectedCity, indexLoaded } = useRadioStore();
@@ -48,14 +50,14 @@ function IntroPlayButton() {
 }
 
 function AppContent() {
-  const { selectCity } = useRadioStore();
   const { currentRoute } = useRouter();
+  const { resume, dismissResume, playHereInstead } = useSonosSession();
 
   useEffect(() => {
     if (currentRoute.type === 'search') {
       // handled by search panel
     }
-  }, [currentRoute, selectCity]);
+  }, [currentRoute]);
 
   return (
     <HeartbeatProvider>
@@ -67,6 +69,13 @@ function AppContent() {
         <FavoritesPanel />
         <IntroPlayButton />
         <InstallPrompt />
+        {resume && (
+          <SonosResumeBanner
+            session={resume}
+            onKeep={dismissResume}
+            onPlayHere={() => void playHereInstead(resume)}
+          />
+        )}
       </div>
     </HeartbeatProvider>
   );

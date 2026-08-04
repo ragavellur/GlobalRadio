@@ -8,12 +8,14 @@ import { useSignInDialog } from './SignInDialog';
 import type { Station, City } from '../types';
 import { useListenerCounts } from '../hooks/useListenerCounts';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
+import { stopStreaming } from '../lib/sonos';
+import { sendToAlexa } from '../lib/alexa';
 import SonosButton from './SonosButton';
 
 export default function BottomPanel() {
   const {
-    selectedCity, currentStation, isPlaying, pendingStationUrl,
-    playStation, pausePlayback, setPendingStationUrl, openSocialRoom,
+    selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession,
+    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, openSocialRoom,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -21,7 +23,12 @@ export default function BottomPanel() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'offline'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const sonosSessionRef = useRef(sonosSession);
   const counts = useListenerCounts(selectedCity, !!selectedCity && drawerOpen);
+
+  useEffect(() => {
+    sonosSessionRef.current = sonosSession;
+  }, [sonosSession]);
 
   useEffect(() => {
     if (selectedCity) {
@@ -37,14 +44,18 @@ export default function BottomPanel() {
             const pending = pendingStationUrl
               ? filtered.find((s) => s.url === pendingStationUrl)
               : null;
-            playStation(pending ?? filtered[0]);
+            if (sonosSessionRef.current) {
+              setStationSilent(pending ?? filtered[0]);
+            } else {
+              playStation(pending ?? filtered[0]);
+            }
           }
         })
         .catch(() => { setStations([]); setLoadingStations(false); setPendingStationUrl(null); });
     } else {
       setStations([]);
     }
-  }, [selectedCity]);
+  }, [selectedCity, playStation, setStationSilent]);
 
   const startAudio = useCallback((station: Station) => {
     if (!audioRef.current) {
@@ -87,13 +98,37 @@ export default function BottomPanel() {
     }
   }, []);
 
+  const stopSonosIfActive = useCallback(async () => {
+    if (!sonosSessionRef.current) return;
+    try {
+      await stopStreaming();
+    } finally {
+      setSonosSession(null);
+    }
+  }, [setSonosSession]);
+
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
       pausePlayback();
     } else if (currentStation) {
-      playStation(currentStation);
+      if (sonosSessionRef.current) {
+        void stopSonosIfActive().then(() => playStation(currentStation));
+      } else {
+        playStation(currentStation);
+      }
     }
-  }, [isPlaying, currentStation, pausePlayback, playStation]);
+  }, [isPlaying, currentStation, pausePlayback, playStation, stopSonosIfActive]);
+
+  const handlePlayStation = useCallback(
+    (station: Station) => {
+      if (sonosSessionRef.current) {
+        void stopSonosIfActive().then(() => playStation(station));
+      } else {
+        playStation(station);
+      }
+    },
+    [playStation, stopSonosIfActive]
+  );
 
   useEffect(() => {
     if (isPlaying && currentStation) {
@@ -153,9 +188,11 @@ export default function BottomPanel() {
           audioStatus={audioStatus}
           localTime={localTime}
           handleToggleDrawer={handleToggleDrawer}
-          playStation={playStation}
+          playStation={handlePlayStation}
           togglePlayback={togglePlayback}
           counts={counts}
+          sonosActive={!!sonosSession}
+          sonosName={sonosSession?.name ?? null}
           onOpenCityChat={handleOpenCityChat}
           onOpenStationChat={handleOpenStationChat}
         />
@@ -174,7 +211,7 @@ export default function BottomPanel() {
           currentStation={currentStation}
           localTime={localTime}
           handleToggleDrawer={handleToggleDrawer}
-          playStation={playStation}
+          playStation={handlePlayStation}
           hasPlayer={!!currentStation}
           counts={counts}
           onOpenCityChat={handleOpenCityChat}
@@ -189,9 +226,11 @@ export default function BottomPanel() {
             selectedCity={selectedCity}
             audioStatus={audioStatus}
             isPlaying={isPlaying}
-            playStation={playStation}
+            playStation={handlePlayStation}
             stations={stations}
             togglePlayback={togglePlayback}
+            sonosActive={!!sonosSession}
+            sonosName={sonosSession?.name ?? null}
           />
         </div>
       )}
@@ -203,7 +242,7 @@ export default function BottomPanel() {
 function DrawerContent({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
   isPlaying, audioStatus, localTime, handleToggleDrawer, playStation, togglePlayback, counts,
-  onOpenCityChat, onOpenStationChat,
+  sonosActive, sonosName, onOpenCityChat, onOpenStationChat,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -217,6 +256,8 @@ function DrawerContent({
   playStation: (s: Station) => void;
   togglePlayback: () => void;
   counts: ReturnType<typeof useListenerCounts>;
+  sonosActive: boolean;
+  sonosName: string | null;
   onOpenCityChat: (city: any) => void;
   onOpenStationChat: (station: Station) => void;
 }) {
@@ -332,10 +373,12 @@ function DrawerContent({
               </div>
               <div className="text-[11px] text-white/50 truncate">
                 {selectedCity?.city}, {selectedCity?.country}
-                {audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 6 }}>(Offline)</span>}
-                {audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
+                {sonosActive && <span style={{ color: '#00C864', marginLeft: 6 }}>Playing on {sonosName}</span>}
+                {!sonosActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 6 }}>(Offline)</span>}
+                {!sonosActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
               </div>
             </div>
+            <SendToAlexaButton station={currentStation} city={selectedCity} />
             <SonosButton size={18} />
             <button
               onClick={() => toggleFavoriteAction(currentStation, selectedCity)}
@@ -402,7 +445,7 @@ function DrawerContent({
 /* ===== Mobile now playing bar ===== */
 function MobileNowPlaying({
   currentStation, selectedCity, audioStatus, isPlaying,
-  playStation, stations, togglePlayback,
+  playStation, stations, togglePlayback, sonosActive, sonosName,
 }: {
   currentStation: Station;
   selectedCity: any;
@@ -411,6 +454,8 @@ function MobileNowPlaying({
   playStation: (s: Station) => void;
   stations: Station[];
   togglePlayback: () => void;
+  sonosActive: boolean;
+  sonosName: string | null;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   return (
@@ -425,8 +470,9 @@ function MobileNowPlaying({
           </div>
           <div className="text-[11px] text-white/50 truncate">
             {selectedCity?.city}, {selectedCity?.country}
-            {audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 4 }}>(Offline)</span>}
-            {audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
+            {sonosActive && <span style={{ color: '#00C864', marginLeft: 4 }}>Playing on {sonosName}</span>}
+            {!sonosActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 4 }}>(Offline)</span>}
+            {!sonosActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
           </div>
         </div>
         <FavoriteHeart
@@ -434,6 +480,7 @@ function MobileNowPlaying({
           onToggle={() => toggleFavoriteAction(currentStation, selectedCity)}
           size={20}
         />
+        <SendToAlexaButton station={currentStation} city={selectedCity} />
         <SonosButton size={15} />
       </div>
       <div className="flex items-center justify-center px-2 pb-2 gap-2">
@@ -674,6 +721,73 @@ function FavoriteHeart({
     >
       <svg width={size} height={size} viewBox="0 0 32 32" fill={active ? '#00C864' : 'none'} stroke={active ? '#00C864' : 'rgba(255,255,255,0.55)'} strokeWidth="2">
         <path d="M10.4 7.5C7.66 7.5 5.5 9.63 5.5 12.33c0 3.52 2.24 6.55 10.5 13.17 8.26-6.63 10.5-9.66 10.5-13.17 0-2.7-2.16-4.83-4.9-4.83-2.45 0-3.78 1.43-4.81 2.62l-.79.9-.79-.9C14.17 8.97 12.85 7.5 10.4 7.5z" />
+      </svg>
+    </button>
+  );
+}
+
+/* ===== Send to Alexa ===== */
+function SendToAlexaButton({
+  station, city, size = 15,
+}: {
+  station: Station;
+  city: any;
+  size?: number;
+}) {
+  const { user } = useAuth();
+  const { openSignInDialog } = useSignInDialog();
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  const handleClick = useCallback(async () => {
+    if (!user) {
+      openSignInDialog();
+      return;
+    }
+    if (!city) return;
+    setState('sending');
+    try {
+      await sendToAlexa({
+        user_id: user.id,
+        station_name: station.name,
+        station_url: station.url,
+        city: city.city ?? '',
+        country: city.country ?? '',
+      });
+      setState('sent');
+    } catch {
+      setState('error');
+    }
+    window.setTimeout(() => setState('idle'), 2500);
+  }, [user, city, station, openSignInDialog]);
+
+  const title =
+    state === 'sent'
+      ? "Sent! Say 'Alexa, play global radio'"
+      : state === 'error'
+        ? 'Failed to send to Alexa'
+        : !user
+          ? 'Sign in to send this station to your Alexa'
+          : 'Send to Alexa';
+
+  const color = state === 'sent' ? '#00C864' : state === 'error' ? '#ff5555' : 'rgba(255,255,255,0.55)';
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); void handleClick(); }}
+      aria-label="Send to Alexa"
+      title={title}
+      className="flex items-center justify-center shrink-0 rounded-full hover:bg-white/10 transition-colors"
+      style={{
+        width: size + 14,
+        height: size + 14,
+        cursor: 'pointer',
+        border: 'none',
+        background: 'transparent',
+        color,
+      }}
+    >
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
       </svg>
     </button>
   );

@@ -39,6 +39,18 @@ export interface SocialRoom {
   roomName: string;
 }
 
+export interface SonosSession {
+  id: string;
+  name: string;
+  stationName: string;
+  stationUrl: string;
+  city?: string;
+  country?: string;
+  lat?: number;
+  lon?: number;
+  startedAt: number;
+}
+
 export interface RadioState {
   cities: City[];
   indexLoaded: boolean;
@@ -53,7 +65,7 @@ export interface RadioState {
   pendingStationUrl: string | null;
   socialOpen: boolean;
   socialRoom: SocialRoom | null;
-  sonosStreaming: string | null;
+  sonosSession: SonosSession | null;
 }
 
 export type TabName = 'search' | 'browse' | 'station';

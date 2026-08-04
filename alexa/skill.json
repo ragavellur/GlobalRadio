@@ -1,0 +1,38 @@
+{
+  "manifest": {
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://gbnzlxxjswtysmhrjglb.supabase.co/functions/v1/alexa-skill"
+        },
+        "interfaces": [
+          { "type": "AUDIO_PLAYER" }
+        ]
+      }
+    },
+    "manifestVersion": "1.0",
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "containsAds": false,
+      "isExportCompliant": true,
+      "isChildDirected": false,
+      "usesPersonalInfo": false
+    },
+    "publishingInformation": {
+      "category": "MUSIC_AND_AUDIO",
+      "locales": {
+        "en-US": {
+          "name": "Global Radio Explorer",
+          "summary": "Stream thousands of live radio stations from around the world.",
+          "description": "Global Radio Explorer plays live internet radio from cities and countries worldwide. Ask for a station by name, for example \"play Chennai radio\", or ask to play a city like \"play stations from Berlin\". Handy for travel, expats, and anyone who wants to hear the world.",
+          "examplePhrases": [
+            "Alexa, open global radio",
+            "Alexa, play Chennai radio on global radio",
+            "Alexa, ask global radio to play a station"
+          ],
+          "keywords": ["radio", "music", "stream", "news", "world"]
+        }
+      }
+    }
+  }
+}

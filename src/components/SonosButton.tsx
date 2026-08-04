@@ -14,9 +14,10 @@ import {
   clearActiveSonos,
   type SonosGroup,
 } from '../lib/sonos';
+import type { SonosSession } from '../types';
 
 export default function SonosButton({ size = 18 }: { size?: number }) {
-  const { currentStation, pausePlayback, sonosStreaming, setSonosStreaming } = useRadioStore();
+  const { currentStation, selectedCity, pausePlayback, sonosSession, setSonosSession } = useRadioStore();
   const [open, setOpen] = useState(false);
   const [connected, setConnected] = useState(isConnected());
   const [connecting, setConnecting] = useState(false);
@@ -28,11 +29,6 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const active = getActiveSonos();
-    if (active?.name && !sonosStreaming) setSonosStreaming(active.name);
-  }, [sonosStreaming, setSonosStreaming]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -99,9 +95,20 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
       setError(null);
       try {
         await playStream(group.id, currentStation.url, currentStation.name);
-        setActiveSonos({ id: group.id, name: group.name });
+        const session: SonosSession = {
+          id: group.id,
+          name: group.name,
+          stationName: currentStation.name,
+          stationUrl: currentStation.url,
+          city: selectedCity?.city,
+          country: selectedCity?.country,
+          lat: selectedCity?.lat,
+          lon: selectedCity?.lon,
+          startedAt: Date.now(),
+        };
+        setActiveSonos(session);
         pausePlayback();
-        setSonosStreaming(group.name);
+        setSonosSession(session);
         setOpen(false);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Playback failed on Sonos');
@@ -109,7 +116,7 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
         setBusyGroup(null);
       }
     },
-    [currentStation, pausePlayback, setSonosStreaming]
+    [currentStation, selectedCity, pausePlayback, setSonosSession]
   );
 
   const handleStop = useCallback(async () => {
@@ -121,41 +128,41 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
       setError(e instanceof Error ? e.message : 'Failed to stop Sonos');
     }
     clearActiveSonos();
-    setSonosStreaming(null);
+    setSonosSession(null);
     setOpen(false);
-  }, [setSonosStreaming]);
+  }, [setSonosSession]);
 
   const handleDisconnect = useCallback(() => {
     disconnect();
     setConnected(false);
     setGroups([]);
-    setSonosStreaming(null);
+    setSonosSession(null);
     setOpen(false);
-  }, [setSonosStreaming]);
+  }, [setSonosSession]);
 
   if (!SONOS_ENABLED) return null;
 
-  const active = sonosStreaming;
+  const activeName = sonosSession?.name ?? null;
 
   return (
     <div ref={rootRef} className="relative" style={{ display: 'inline-block' }}>
       <button
         ref={buttonRef}
         onClick={handleToggle}
-        aria-label={active ? `Streaming on Sonos (${active}). Manage.` : 'Play on Sonos'}
-        title={active ? `Streaming on ${active}` : 'Play on Sonos'}
+        aria-label={activeName ? `Streaming on Sonos (${activeName}). Manage.` : 'Play on Sonos'}
+        title={activeName ? `Streaming on ${activeName}` : 'Play on Sonos'}
         className="flex items-center justify-center shrink-0 rounded-full transition-colors hover:bg-white/10"
         style={{
           width: size + 12,
           height: size + 12,
-          background: active ? 'rgba(0,200,100,0.25)' : 'rgba(0,200,100,0.12)',
-          border: `1px solid ${active ? '#00C864' : 'rgba(0,200,100,0.35)'}`,
+          background: activeName ? 'rgba(0,200,100,0.25)' : 'rgba(0,200,100,0.12)',
+          border: `1px solid ${activeName ? '#00C864' : 'rgba(0,200,100,0.35)'}`,
           cursor: 'pointer',
         }}
       >
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 10v4h3l4 4V6L5 10H2z" />
-          {active && (
+          {activeName && (
             <>
               <path d="M15 8a5 5 0 0 1 0 8" />
               <path d="M17.5 5.5a9 9 0 0 1 0 13" />
@@ -224,8 +231,8 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
                   <div key={g.id} className="flex items-center gap-2 py-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] truncate">{g.name}</div>
-                      <div className="text-[11px]" style={{ color: active === g.name ? '#00C864' : 'rgba(255,255,255,0.4)' }}>
-                        {active === g.name ? 'Streaming here' : 'Sonos'}
+                      <div className="text-[11px]" style={{ color: activeName === g.name ? '#00C864' : 'rgba(255,255,255,0.4)' }}>
+                        {activeName === g.name ? 'Streaming here' : 'Sonos'}
                       </div>
                     </div>
                     <button
@@ -233,14 +240,14 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
                       disabled={!!busyGroup || !currentStation}
                       className="text-[12px] font-medium rounded-full px-3 py-1 transition-colors"
                       style={{
-                        background: active === g.name ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.1)',
-                        color: active === g.name ? '#00C864' : '#fff',
+                        background: activeName === g.name ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.1)',
+                        color: activeName === g.name ? '#00C864' : '#fff',
                         cursor: !currentStation || busyGroup ? 'not-allowed' : 'pointer',
                         opacity: !currentStation || busyGroup ? 0.5 : 1,
                         border: 'none',
                       }}
                     >
-                      {busyGroup === g.id ? '…' : active === g.name ? 'Playing' : 'Play here'}
+                      {busyGroup === g.id ? '…' : activeName === g.name ? 'Playing' : 'Play here'}
                     </button>
                   </div>
                 ))}
@@ -261,7 +268,7 @@ export default function SonosButton({ size = 18 }: { size?: number }) {
                   Disconnect
                 </button>
               )}
-              {active && (
+              {activeName && (
                 <button
                   onClick={() => void handleStop()}
                   className="text-[12px] font-medium rounded-full px-3 py-1"

@@ -1,3 +1,6 @@
+import type { SonosSession } from '../types';
+import { supabase } from './supabase';
+
 export const SONOS_CLIENT_ID = import.meta.env.VITE_SONOS_CLIENT_ID as string | undefined;
 export const SONOS_REDIRECT_URI = import.meta.env.VITE_SONOS_REDIRECT_URI as string | undefined;
 export const SONOS_FUNCTION_URL = import.meta.env.VITE_SONOS_FUNCTION_URL as string | undefined;
@@ -22,11 +25,6 @@ export interface SonosGroup {
   id: string;
   name: string;
   playbackState?: string;
-}
-
-export interface ActiveSonos {
-  id: string;
-  name: string;
 }
 
 export class SonosError extends Error {
@@ -90,6 +88,7 @@ export function connect(): Promise<SonosTokens> {
       sessionStorage.removeItem(STATE_KEY);
       if (data.status === 'success' && data.tokens?.access_token) {
         saveTokens(data.tokens);
+        void syncTokensToServer();
         resolve(data.tokens);
       } else {
         reject(new SonosError(data.message || 'Sonos connection failed'));
@@ -109,6 +108,86 @@ export function connect(): Promise<SonosTokens> {
 export function disconnect() {
   clearTokens();
   clearActiveSonos();
+  void clearServerTokens();
+}
+
+/* ============ server-side token sync (cross-device / Alexa) ============ */
+
+async function supabaseJwt(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Pull the user's Sonos tokens from the server (e.g. when they log in on a new
+// device that has no local tokens yet). No-op when already connected locally.
+export async function restoreTokensFromServer(): Promise<void> {
+  if (isConnected() || !SONOS_FUNCTION_URL) return;
+  const jwt = await supabaseJwt();
+  if (!jwt) return;
+  try {
+    const res = await fetch(SONOS_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get_tokens', access_token: jwt }),
+    });
+    const body = await res.json().catch(() => ({}));
+    const t = body?.tokens;
+    if (res.ok && t?.access_token && t?.refresh_token) {
+      saveTokens({
+        access_token: t.access_token,
+        refresh_token: t.refresh_token,
+        expires_in: Number(t.expires_in) || 0,
+      });
+    }
+  } catch {
+    // offline — keep whatever local state exists
+  }
+}
+
+// Push the current local Sonos tokens to the server for the signed-in user.
+export async function syncTokensToServer(): Promise<void> {
+  if (!SONOS_FUNCTION_URL) return;
+  const jwt = await supabaseJwt();
+  if (!jwt) return;
+  const tokens = loadTokens();
+  if (!tokens?.access_token || !tokens?.refresh_token) return;
+  try {
+    await fetch(SONOS_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'save_tokens',
+        access_token: jwt,
+        sonos_tokens: {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expires_in: tokens.expires_in,
+        },
+      }),
+    });
+  } catch {
+    // offline — tokens will be pushed next time
+  }
+}
+
+export async function clearServerTokens(): Promise<void> {
+  if (!SONOS_FUNCTION_URL) return;
+  const jwt = await supabaseJwt();
+  if (!jwt) return;
+  try {
+    await fetch(SONOS_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_tokens', access_token: jwt }),
+    });
+  } catch {
+    // offline
+  }
 }
 
 /* ============ access token lifecycle ============ */
@@ -135,6 +214,7 @@ export async function ensureAccessToken(): Promise<string> {
     throw new SonosError((body as any)?.error || 'Failed to refresh Sonos token. Please reconnect.');
   }
   saveTokens(body);
+  void syncTokensToServer();
   return body.access_token as string;
 }
 
@@ -226,13 +306,18 @@ export async function playGroup(groupId: string): Promise<void> {
 
 /* ============ active handoff tracking (survives reload) ============ */
 
-export function setActiveSonos(active: ActiveSonos) {
+export function setActiveSonos(active: SonosSession) {
   localStorage.setItem(ACTIVE_KEY, JSON.stringify(active));
 }
 
-export function getActiveSonos(): ActiveSonos | null {
+export function getActiveSonos(): SonosSession | null {
   try {
-    return JSON.parse(localStorage.getItem(ACTIVE_KEY) || 'null');
+    const parsed = JSON.parse(localStorage.getItem(ACTIVE_KEY) || 'null') as SonosSession | null;
+    if (parsed && !parsed.stationName) {
+      localStorage.removeItem(ACTIVE_KEY);
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -240,6 +325,80 @@ export function getActiveSonos(): ActiveSonos | null {
 
 export function clearActiveSonos() {
   localStorage.removeItem(ACTIVE_KEY);
+}
+
+/* ============ session detection (what's actually playing on Sonos) ============ */
+
+const STREAMING_STATES = new Set([
+  'PLAYBACK_STATE_PLAYING',
+  'PLAYBACK_STATE_TRANSITIONING',
+  'PLAYBACK_STATE_BUFFERING',
+  'PLAYBACK_STATE_LOADING',
+]);
+
+export interface GroupPlayback {
+  playbackState: string | null;
+  title: string | null;
+}
+
+export async function getGroupPlayback(groupId: string): Promise<GroupPlayback> {
+  const data = await apiFetch(`/groups/${groupId}/playback`);
+  return {
+    playbackState: data?.playbackState ?? null,
+    title: data?.metadata?.title ?? null,
+  };
+}
+
+export type SonosCheckResult =
+  | { status: 'none' }
+  | { status: 'streaming'; session: SonosSession; playbackState: string; title: string | null }
+  | { status: 'stopped' }
+  | { status: 'other' }
+  | { status: 'error'; message: string };
+
+export async function checkSonosSession(): Promise<SonosCheckResult> {
+  const session = getActiveSonos();
+  if (!session || !isConnected()) return { status: 'none' };
+
+  try {
+    const { playbackState, title } = await getGroupPlayback(session.id);
+
+    if (!playbackState || !STREAMING_STATES.has(playbackState)) {
+      clearActiveSonos();
+      return { status: 'stopped' };
+    }
+
+    if (title && session.stationName && !titleMatchesStation(title, session.stationName)) {
+      clearActiveSonos();
+      return { status: 'other' };
+    }
+
+    return { status: 'streaming', session, playbackState, title };
+  } catch (e) {
+    return {
+      status: 'error',
+      message: e instanceof Error ? e.message : 'Failed to reach Sonos',
+    };
+  }
+}
+
+function titleMatchesStation(title: string, stationName: string): boolean {
+  const t = title.trim().toLowerCase();
+  const s = stationName.trim().toLowerCase();
+  return t === s || t.includes(s) || s.includes(t);
+}
+
+// Stop whatever our app is streaming on Sonos and clear the active marker.
+export async function stopStreaming(): Promise<void> {
+  const active = getActiveSonos();
+  if (active?.id) {
+    try {
+      await pauseGroup(active.id);
+    } catch {
+      // ignore — group may already be stopped
+    }
+  }
+  clearActiveSonos();
 }
 
 /* ============ helpers ============ */

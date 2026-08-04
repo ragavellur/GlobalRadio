@@ -1,0 +1,64 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "global radio",
+      "intents": [
+        {
+          "name": "PlayStationIntent",
+          "slots": [
+            { "name": "station", "type": "AMAZON.SearchQuery" },
+            { "name": "city", "type": "AMAZON.City" },
+            { "name": "country", "type": "AMAZON.Country" }
+          ],
+          "samples": [
+            "play {station}",
+            "play {station} radio",
+            "play radio from {city}",
+            "play {city} radio",
+            "play stations from {city}",
+            "play radio in {city}",
+            "play {city} stations",
+            "play radio from {city} in {country}",
+            "play {station} in {city}",
+            "play a station"
+          ]
+        },
+        {
+          "name": "PlayFavoritesIntent",
+          "slots": [],
+          "samples": [
+            "play my favorites",
+            "play my favorite stations",
+            "play my saved stations",
+            "play my list",
+            "play my radio stations"
+          ]
+        },
+        {
+          "name": "PlayOnSonosIntent",
+          "slots": [
+            { "name": "station", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "play on sonos",
+            "play on my sonos",
+            "play on the sonos"
+          ]
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "slots": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "slots": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "slots": []
+        }
+      ],
+      "types": []
+    }
+  }
+}

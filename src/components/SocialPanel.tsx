@@ -9,7 +9,7 @@ import { useUserDirectory } from '../hooks/useUserDirectory';
 import { useHeartbeat } from '../hooks/useHeartbeat';
 import { cityKeyOf } from '../lib/social';
 import { countryName } from '../lib/countryNames';
-import type { RoomMessage, DirectMessage, Conversation, UserDirectoryEntry } from '../lib/social';
+import type { RoomMessage, Conversation, UserDirectoryEntry } from '../lib/social';
 import type { City } from '../types';
 import SlidePanel from './SlidePanel';
 
@@ -81,7 +81,7 @@ function SocialPanelInner() {
       >
         {socialRoom ? (
           <RoomChatView
-            user={!!user}
+            meId={user?.id ?? null}
             roomName={socialRoom.roomName}
             messages={chat.messages}
             loading={chat.loading}
@@ -111,10 +111,242 @@ function SocialPanelInner() {
 }
 
 /* ============================================================================
+   WhatsApp-style chat primitives (shared by group chat + DMs)
+   ============================================================================ */
+
+const CHAT_BG = '#0b141a';
+const INCOMING_BUBBLE = '#202c33';
+const OUTGOING_BUBBLE = '#005c4b';
+const CHAT_TEXT = '#e9edef';
+const CHAT_META = 'rgba(233,237,239,0.55)';
+const CHAT_DAY_BG = '#182229';
+const CHAT_DAY_TEXT = '#8696a0';
+const CHAT_INPUT_BG = '#1f2c33';
+const CHAT_INPUT_FIELD = '#2a3942';
+const CHAT_SEND = '#00a884';
+
+// Faint doodle tile, mirrors WhatsApp's chat wallpaper.
+const CHAT_WALLPAPER =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.055' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='40' cy='40' r='10'/%3E%3Cpath d='M120 30c8 0 14 6 14 14s-6 14-14 14-14-6-14-14'/%3E%3Cpath d='M200 50c-10-8-10-24 0-32'/%3E%3Ccircle cx='260' cy='30' r='6'/%3E%3Cpath d='M30 120c6-6 14-6 20 0s14 6 20 0'/%3E%3Ccircle cx='140' cy='110' r='8'/%3E%3Cpath d='M210 100c10 4 16 12 18 22'/%3E%3Ccircle cx='30' cy='250' r='6'/%3E%3Cpath d='M120 240c8 0 14 6 14 14'/%3E%3Ccircle cx='250' cy='250' r='10'/%3E%3Cpath d='M180 200c-8 6-20 6-28 0'/%3E%3Cpath d='M240 180l10 20'/%3E%3Cpath d='M60 180c12 0 12 12 24 12'/%3E%3Ccircle cx='260' cy='130' r='5'/%3E%3C/g%3E%3C/svg%3E\")";
+
+const NAME_COLORS = ['#f47b6a', '#7ee081', '#f5b761', '#7f8ef4', '#a5f4f4', '#f5a8d0'];
+
+function colorForName(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return NAME_COLORS[h % NAME_COLORS.length];
+}
+
+function sameDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+}
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const dayStart = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((dayStart(now) - dayStart(d)) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+}
+
+function clock(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function DayChip({ label }: { label: string }) {
+  return (
+    <div className="flex justify-center" style={{ margin: '6px 0 10px' }}>
+      <span
+        className="px-2.5 py-0.5 rounded-lg font-medium tracking-wide uppercase"
+        style={{ background: CHAT_DAY_BG, color: CHAT_DAY_TEXT, fontSize: 11 }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function Tick({ mine }: { mine: boolean }) {
+  if (!mine) return null;
+  return (
+    <svg width="14" height="12" viewBox="0 0 18 12" style={{ flexShrink: 0 }}>
+      <path
+        d="M1 6l4 4 8-9"
+        stroke="rgba(233,237,239,0.6)"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+interface ChatRow {
+  id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+
+// One WhatsApp bubble (tail on the first of a run, time + tick inside).
+function ChatBubble({
+  mine,
+  name,
+  nameColor,
+  firstInGroup,
+  body,
+  time,
+}: {
+  mine: boolean;
+  name?: string;
+  nameColor?: string;
+  firstInGroup: boolean;
+  body: string;
+  time: string;
+}) {
+  return (
+    <div
+      className="flex"
+      style={{ justifyContent: mine ? 'flex-end' : 'flex-start', paddingBottom: 2 }}
+    >
+      <div
+        className="relative"
+        style={{
+          maxWidth: '78%',
+          background: mine ? OUTGOING_BUBBLE : INCOMING_BUBBLE,
+          color: CHAT_TEXT,
+          padding: '6px 8px 6px 9px',
+          borderRadius: 7.5,
+          borderTopLeftRadius: !mine && firstInGroup ? 0 : 7.5,
+          borderTopRightRadius: mine && firstInGroup ? 0 : 7.5,
+          boxShadow: '0 1px 1px rgba(0,0,0,0.2)',
+          fontSize: 13.5,
+          lineHeight: 1.35,
+          wordBreak: 'break-word',
+          overflow: 'hidden',
+        }}
+      >
+        {name && (
+          <div style={{ color: nameColor, fontWeight: 600, fontSize: 12.5, marginBottom: 1 }}>
+            {name}
+          </div>
+        )}
+        <div dir="auto" style={{ whiteSpace: 'pre-wrap' }}>
+          {body}
+        </div>
+        <div
+          className="flex items-center"
+          style={{
+            float: 'right',
+            margin: '4px 0 -2px 8px',
+            gap: 3,
+            color: mine ? 'rgba(233,237,239,0.65)' : CHAT_META,
+          }}
+        >
+          <span style={{ fontSize: 10.5, lineHeight: 1 }}>{time}</span>
+          <Tick mine={mine} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// WhatsApp-style composer: rounded field + green circular send button.
+function ChatComposer({
+  value,
+  onChange,
+  onSubmit,
+  placeholder,
+  error,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  placeholder: string;
+  error: string | null;
+  disabled?: boolean;
+}) {
+  return (
+    <form
+      className="shrink-0"
+      style={{ background: CHAT_INPUT_BG, padding: '8px 10px', borderTop: '1px solid rgba(11,20,26,0.8)' }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      {error && (
+        <div className="px-1 pb-1.5 text-[12px]" style={{ color: '#ff8a80' }}>
+          {error}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="flex-1 min-w-0 rounded-lg outline-none disabled:opacity-60"
+          style={{
+            background: CHAT_INPUT_FIELD,
+            color: CHAT_TEXT,
+            fontSize: 13.5,
+            padding: '9px 12px',
+            border: 'none',
+          }}
+        />
+        <button
+          type="submit"
+          aria-label="Send"
+          className="flex items-center justify-center rounded-full shrink-0 transition-opacity"
+          style={{
+            width: 40,
+            height: 40,
+            background: CHAT_SEND,
+            cursor: 'pointer',
+            border: 'none',
+            color: '#fff',
+            opacity: value.trim() ? 1 : 0.6,
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+          </svg>
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ChatEmptyHint({ text }: { text: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center flex-1" style={{ minHeight: 0, background: CHAT_BG }}>
+      <span className="text-[13px]" style={{ color: CHAT_META }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/* ============================================================================
    Group chat (opened from a city or station chat icon)
    ============================================================================ */
 function RoomChatView({
-  user,
+  meId,
   roomName,
   messages,
   loading,
@@ -122,7 +354,7 @@ function RoomChatView({
   onBack,
   onRequireSignIn,
 }: {
-  user: boolean;
+  meId: string | null;
   roomName: string;
   messages: RoomMessage[];
   loading: boolean;
@@ -139,11 +371,10 @@ function RoomChatView({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = () => {
     const text = draft.trim();
     if (!text) return;
-    if (!user) {
+    if (!meId) {
       onRequireSignIn();
       return;
     }
@@ -152,83 +383,78 @@ function RoomChatView({
   };
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
-      <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+      <div
+        className="flex items-center gap-2 px-2 py-2 shrink-0"
+        style={{ background: CHAT_INPUT_BG, borderBottom: '1px solid rgba(11,20,26,0.8)' }}
+      >
         <button
           onClick={onBack}
           className="flex items-center justify-center rounded-full hover:bg-white/10"
-          style={{ width: 28, height: 28, cursor: 'pointer', border: 'none', background: 'transparent' }}
+          style={{ width: 32, height: 32, cursor: 'pointer', border: 'none', background: 'transparent' }}
           aria-label="Close chat"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(233,237,239,0.8)" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <div className="flex-1 min-w-0 text-[13px] text-white/60 truncate">
-          Group chat · {roomName}
-        </div>
-      </div>
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2" style={{ minHeight: 0 }}>
-        {loading && messages.length === 0 && (
-          <div className="text-center text-white/40 text-[13px] py-6">Loading chat…</div>
-        )}
-        {!loading && messages.length === 0 && (
-          <div className="text-center text-white/40 text-[13px] py-6">
-            No messages yet. Say hello!
-          </div>
-        )}
-        {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} />
-        ))}
-      </div>
-
-      <form
-        onSubmit={submit}
-        style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        {sendError && <div className="px-3 pt-2 text-[12px] text-red-300">{sendError}</div>}
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={user ? 'Message…' : 'Sign in to chat…'}
-            className="flex-1 rounded-full px-3.5 py-2 text-[13px] text-white outline-none"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-          />
-          <button
-            type="submit"
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 36, height: 36, background: '#00C864', cursor: 'pointer', border: 'none' }}
-            aria-label="Send"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
-              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
-            </svg>
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: RoomMessage }) {
-  const name = message.profiles?.display_name || 'Radio listener';
-  const avatar = message.profiles?.avatar_url || null;
-  return (
-    <div className="mb-3">
-      <div className="flex items-center gap-1.5 mb-0.5">
-        <Avatar url={avatar} name={name} size={18} />
-        <span className="text-[12px] font-medium" style={{ color: '#00C864' }}>
-          {name}
+        <span
+          className="flex items-center justify-center rounded-full shrink-0 font-bold"
+          style={{ width: 30, height: 30, background: CHAT_INPUT_FIELD, color: CHAT_SEND, fontSize: 14 }}
+        >
+          {(roomName.trim()[0] ?? 'G').toUpperCase()}
         </span>
-        <span className="text-[10px] text-white/30">{timeAgo(message.created_at)}</span>
-      </div>
-      <div className="pl-[25px]">
-        <div className="text-[13px] text-white/90 leading-snug break-words" dir="auto">
-          {message.body}
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] text-white truncate" style={{ color: CHAT_TEXT }}>
+            {roomName}
+          </div>
+          <div className="text-[11.5px] truncate" style={{ color: CHAT_META }}>
+            Group chat
+          </div>
         </div>
       </div>
+
+      {loading && messages.length === 0 ? (
+        <ChatEmptyHint text="Loading chat…" />
+      ) : messages.length === 0 ? (
+        <ChatEmptyHint text="No messages yet. Say hello!" />
+      ) : (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+          <div className="mx-auto px-2 py-2.5" style={{ maxWidth: 860, background: CHAT_BG, backgroundImage: CHAT_WALLPAPER, backgroundSize: '280px 280px' }}>
+            {messages.map((m, i) => {
+              const prev = messages[i - 1];
+              const next = messages[i + 1];
+              const mine = m.sender_id === meId;
+              const sameSender = !!prev && prev.sender_id === m.sender_id;
+              const timeGap = prev ? new Date(m.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+              const firstInGroup = !sameSender || timeGap > 5 * 60 * 1000;
+              const groupEnd = !next || next.sender_id !== m.sender_id || new Date(next.created_at).getTime() - new Date(m.created_at).getTime() > 5 * 60 * 1000;
+              return (
+                <div key={m.id} style={{ marginBottom: groupEnd ? 8 : 2 }}>
+                  {(!prev || !sameDay(prev.created_at, m.created_at)) && <DayChip label={dayLabel(m.created_at)} />}
+                  <ChatBubble
+                    mine={mine}
+                    firstInGroup={firstInGroup}
+                    body={m.body}
+                    time={clock(m.created_at)}
+                    name={mine ? undefined : m.profiles?.display_name || 'Radio listener'}
+                    nameColor={mine ? undefined : colorForName(m.sender_id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <ChatComposer
+        value={draft}
+        onChange={setDraft}
+        onSubmit={submit}
+        placeholder={meId ? 'Message' : 'Sign in to chat…'}
+        error={sendError}
+        disabled={!meId}
+      />
     </div>
   );
 }
@@ -394,74 +620,76 @@ function DmThread({
   }, [dms.messages.length, dms.openId]);
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
-      <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+      <div
+        className="flex items-center gap-2 px-2 py-2 shrink-0"
+        style={{ background: CHAT_INPUT_BG, borderBottom: '1px solid rgba(11,20,26,0.8)' }}
+      >
         <button
           onClick={onBack}
           className="flex items-center justify-center rounded-full hover:bg-white/10"
-          style={{ width: 28, height: 28, cursor: 'pointer', border: 'none', background: 'transparent' }}
+          style={{ width: 32, height: 32, cursor: 'pointer', border: 'none', background: 'transparent' }}
           aria-label="Back"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(233,237,239,0.8)" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
+        <Avatar url={openConv?.other.avatar_url ?? null} name={openConv?.other.display_name ?? '?'} size={30} />
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] text-white truncate">{openConv?.other.display_name || 'Conversation'}</div>
+          <div className="text-[14px] truncate" style={{ color: CHAT_TEXT }}>
+            {openConv?.other.display_name || 'Conversation'}
+          </div>
+          <div className="text-[11.5px] truncate" style={{ color: CHAT_META }}>
+            Direct message
+          </div>
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2" style={{ minHeight: 0 }}>
-        {dms.messagesLoading && dms.messages.length === 0 && (
-          <div className="text-center text-white/40 text-[13px] py-6">Loading…</div>
-        )}
-        {!dms.messagesLoading && dms.messages.length === 0 && (
-          <div className="text-center text-white/40 text-[13px] py-6">Say hello 👋</div>
-        )}
-        {dms.messages.map((m) => (
-          <DmBubble key={m.id} message={m} meId={meId} />
-        ))}
-      </div>
+      {dms.messagesLoading && dms.messages.length === 0 ? (
+        <ChatEmptyHint text="Loading…" />
+      ) : dms.messages.length === 0 ? (
+        <ChatEmptyHint text="No messages yet. Say hello!" />
+      ) : (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+          <div
+            className="mx-auto px-2 py-2.5"
+            style={{ maxWidth: 860, background: CHAT_BG, backgroundImage: CHAT_WALLPAPER, backgroundSize: '280px 280px' }}
+          >
+            {dms.messages.map((m, i) => {
+              const prev = dms.messages[i - 1];
+              const next = dms.messages[i + 1];
+              const mine = m.sender_id === meId;
+              const sameSender = !!prev && prev.sender_id === m.sender_id;
+              const timeGap = prev ? new Date(m.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+              const firstInGroup = !sameSender || timeGap > 5 * 60 * 1000;
+              const groupEnd = !next || next.sender_id !== m.sender_id || new Date(next.created_at).getTime() - new Date(m.created_at).getTime() > 5 * 60 * 1000;
+              return (
+                <div key={m.id} style={{ marginBottom: groupEnd ? 8 : 2 }}>
+                  {(!prev || !sameDay(prev.created_at, m.created_at)) && <DayChip label={dayLabel(m.created_at)} />}
+                  <ChatBubble mine={mine} firstInGroup={firstInGroup} body={m.body} time={clock(m.created_at)} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
+      <ChatComposer
+        value={draft}
+        onChange={setDraft}
+        onSubmit={() => {
           const text = draft.trim();
           if (!text) return;
           setSendError(null);
           void dms.send(text).then((ok) => {
-            if (ok) {
-              setDraft('');
-            } else {
-              setSendError("Message couldn't be sent. Try again.");
-            }
+            if (ok) setDraft('');
+            else setSendError("Message couldn't be sent. Try again.");
           });
         }}
-        style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        {sendError && (
-          <div className="px-3 pt-2 text-[12px] text-red-300">{sendError}</div>
-        )}
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message…"
-            className="flex-1 rounded-full px-3.5 py-2 text-[13px] text-white outline-none"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-          />
-          <button
-            type="submit"
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 36, height: 36, background: '#00C864', cursor: 'pointer', border: 'none' }}
-            aria-label="Send"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
-              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
-            </svg>
-          </button>
-        </div>
-      </form>
+        placeholder="Message"
+        error={sendError}
+      />
     </div>
   );
 }
@@ -489,27 +717,6 @@ function InboxRow({ conv, meId, onOpen }: { conv: Conversation; meId: string | n
         </span>
       )}
     </button>
-  );
-}
-
-function DmBubble({ message, meId }: { message: DirectMessage; meId: string | null }) {
-  const mine = message.sender_id === meId;
-  return (
-    <div className="mb-2 flex" style={{ justifyContent: mine ? 'flex-end' : 'flex-start' }}>
-      <div
-        className="max-w-[75%] rounded-2xl px-3 py-2"
-        style={{
-          background: mine ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.08)',
-          borderTopRightRadius: mine ? 4 : 12,
-          borderTopLeftRadius: mine ? 12 : 4,
-        }}
-      >
-        <div className="text-[13px] text-white break-words leading-snug" dir="auto">
-          {message.body}
-        </div>
-        <div className="text-[10px] text-white/30 mt-0.5 text-right">{timeAgo(message.created_at)}</div>
-      </div>
-    </div>
   );
 }
 
