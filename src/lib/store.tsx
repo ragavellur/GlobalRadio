@@ -1,5 +1,5 @@
 import { useState, useCallback, createContext, useContext } from 'react';
-import type { City, Station, SocialRoom, RadioState, SonosSession } from '../types';
+import type { City, Station, SocialRoom, RadioState, SonosSession, CastSession } from '../types';
 
 interface RadioStore extends RadioState {
   setCities: (cities: City[]) => void;
@@ -19,6 +19,7 @@ interface RadioStore extends RadioState {
   openSocialRoom: (room: SocialRoom) => void;
   closeSocial: () => void;
   setSonosSession: (session: SonosSession | null) => void;
+  setCastSession: (session: CastSession | null) => void;
   setStationSilent: (station: Station) => void;
 }
 
@@ -41,6 +42,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     socialOpen: false,
     socialRoom: null,
     sonosSession: null,
+    castSession: null,
   });
 
   const setCities = useCallback((cities: City[]) => {
@@ -111,6 +113,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, sonosSession: session }));
   }, []);
 
+  const setCastSession = useCallback((session: CastSession | null) => {
+    setState((prev) => ({ ...prev, castSession: session }));
+  }, []);
+
   const setStationSilent = useCallback((station: Station) => {
     setState((prev) => ({ ...prev, currentStation: station, isPlaying: false }));
   }, []);
@@ -136,6 +142,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         openSocialRoom,
         closeSocial,
         setSonosSession,
+        setCastSession,
         setStationSilent,
       }}
     >

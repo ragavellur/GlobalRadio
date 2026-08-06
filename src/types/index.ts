@@ -51,6 +51,13 @@ export interface SonosSession {
   startedAt: number;
 }
 
+export interface CastSession {
+  deviceName: string;
+  stationName: string;
+  stationUrl: string;
+  startedAt: number;
+}
+
 export interface RadioState {
   cities: City[];
   indexLoaded: boolean;
@@ -67,6 +74,7 @@ export interface RadioState {
   socialOpen: boolean;
   socialRoom: SocialRoom | null;
   sonosSession: SonosSession | null;
+  castSession: CastSession | null;
 }
 
 export type TabName = 'search' | 'browse' | 'station';

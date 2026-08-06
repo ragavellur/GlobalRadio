@@ -9,13 +9,15 @@ import type { Station, City } from '../types';
 import { useListenerCounts } from '../hooks/useListenerCounts';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
 import { stopStreaming } from '../lib/sonos';
+import { stopCast } from '../lib/cast';
 import { sendToAlexa } from '../lib/alexa';
 import SonosButton from './SonosButton';
+import CastButton from './CastButton';
 
 export default function BottomPanel() {
   const {
-    selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession, drawerOpen,
-    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, openSocialRoom, setDrawerOpen,
+    selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession, castSession, drawerOpen,
+    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, setCastSession, openSocialRoom, setDrawerOpen,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -23,11 +25,16 @@ export default function BottomPanel() {
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'offline'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sonosSessionRef = useRef(sonosSession);
+  const castSessionRef = useRef(castSession);
   const counts = useListenerCounts(selectedCity, !!selectedCity && drawerOpen);
 
   useEffect(() => {
     sonosSessionRef.current = sonosSession;
   }, [sonosSession]);
+
+  useEffect(() => {
+    castSessionRef.current = castSession;
+  }, [castSession]);
 
   useEffect(() => {
     if (selectedCity) {
@@ -106,27 +113,41 @@ export default function BottomPanel() {
     }
   }, [setSonosSession]);
 
+  const stopCastIfActive = useCallback(() => {
+    if (!castSessionRef.current) return;
+    stopCast();
+    setCastSession(null);
+  }, [setCastSession]);
+
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
       pausePlayback();
     } else if (currentStation) {
       if (sonosSessionRef.current) {
-        void stopSonosIfActive().then(() => playStation(currentStation));
+        void stopSonosIfActive().then(() => {
+          stopCastIfActive();
+          playStation(currentStation);
+        });
       } else {
+        stopCastIfActive();
         playStation(currentStation);
       }
     }
-  }, [isPlaying, currentStation, pausePlayback, playStation, stopSonosIfActive]);
+  }, [isPlaying, currentStation, pausePlayback, playStation, stopSonosIfActive, stopCastIfActive]);
 
   const handlePlayStation = useCallback(
     (station: Station) => {
       if (sonosSessionRef.current) {
-        void stopSonosIfActive().then(() => playStation(station));
+        void stopSonosIfActive().then(() => {
+          stopCastIfActive();
+          playStation(station);
+        });
       } else {
+        stopCastIfActive();
         playStation(station);
       }
     },
-    [playStation, stopSonosIfActive]
+    [playStation, stopSonosIfActive, stopCastIfActive]
   );
 
   useEffect(() => {
@@ -192,6 +213,8 @@ export default function BottomPanel() {
           counts={counts}
           sonosActive={!!sonosSession}
           sonosName={sonosSession?.name ?? null}
+          castActive={!!castSession}
+          castName={castSession?.deviceName ?? null}
           onOpenCityChat={handleOpenCityChat}
           onOpenStationChat={handleOpenStationChat}
         />
@@ -230,6 +253,8 @@ export default function BottomPanel() {
             togglePlayback={togglePlayback}
             sonosActive={!!sonosSession}
             sonosName={sonosSession?.name ?? null}
+            castActive={!!castSession}
+            castName={castSession?.deviceName ?? null}
           />
         </div>
       )}
@@ -241,7 +266,7 @@ export default function BottomPanel() {
 function DrawerContent({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
   isPlaying, audioStatus, localTime, handleToggleDrawer, playStation, togglePlayback, counts,
-  sonosActive, sonosName, onOpenCityChat, onOpenStationChat,
+  sonosActive, sonosName, castActive, castName, onOpenCityChat, onOpenStationChat,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -257,6 +282,8 @@ function DrawerContent({
   counts: ReturnType<typeof useListenerCounts>;
   sonosActive: boolean;
   sonosName: string | null;
+  castActive: boolean;
+  castName: string | null;
   onOpenCityChat: (city: any) => void;
   onOpenStationChat: (station: Station) => void;
 }) {
@@ -373,12 +400,14 @@ function DrawerContent({
               <div className="text-[11px] text-white/50 truncate">
                 {selectedCity?.city}, {selectedCity?.country}
                 {sonosActive && <span style={{ color: '#00C864', marginLeft: 6 }}>Playing on {sonosName}</span>}
-                {!sonosActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 6 }}>(Offline)</span>}
-                {!sonosActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
+                {castActive && <span style={{ color: '#00C864', marginLeft: 6 }}>Playing on {castName}</span>}
+                {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 6 }}>(Offline)</span>}
+                {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
               </div>
             </div>
             <SendToAlexaButton station={currentStation} city={selectedCity} />
             <SonosButton size={18} />
+            <CastButton size={18} />
             <button
               onClick={() => toggleFavoriteAction(currentStation, selectedCity)}
               className="ml-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
@@ -444,7 +473,7 @@ function DrawerContent({
 /* ===== Mobile now playing bar ===== */
 function MobileNowPlaying({
   currentStation, selectedCity, audioStatus, isPlaying,
-  playStation, stations, togglePlayback, sonosActive, sonosName,
+  playStation, stations, togglePlayback, sonosActive, sonosName, castActive, castName,
 }: {
   currentStation: Station;
   selectedCity: any;
@@ -455,6 +484,8 @@ function MobileNowPlaying({
   togglePlayback: () => void;
   sonosActive: boolean;
   sonosName: string | null;
+  castActive: boolean;
+  castName: string | null;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   return (
@@ -470,8 +501,9 @@ function MobileNowPlaying({
           <div className="text-[11px] text-white/50 truncate">
             {selectedCity?.city}, {selectedCity?.country}
             {sonosActive && <span style={{ color: '#00C864', marginLeft: 4 }}>Playing on {sonosName}</span>}
-            {!sonosActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 4 }}>(Offline)</span>}
-            {!sonosActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
+            {castActive && <span style={{ color: '#00C864', marginLeft: 4 }}>Playing on {castName}</span>}
+            {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 4 }}>(Offline)</span>}
+            {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
           </div>
         </div>
         <FavoriteHeart
@@ -481,6 +513,7 @@ function MobileNowPlaying({
         />
         <SendToAlexaButton station={currentStation} city={selectedCity} />
         <SonosButton size={15} />
+        <CastButton size={15} />
       </div>
       <div className="flex items-center justify-center px-2 pb-2 gap-2">
         <PlayButton
