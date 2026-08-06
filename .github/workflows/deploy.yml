@@ -10,6 +10,7 @@ permissions:
   pages: write
   id-token: write
 
+# Forcing cancellation allows subsequent runs to clear the pipeline instantly
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -35,9 +36,6 @@ jobs:
 
       - name: Copy 404.html for SPA routing
         run: cp dist/index.html dist/404.html
-
-      - name: Write CNAME
-        run: echo "radio.vellur.in" > dist/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
