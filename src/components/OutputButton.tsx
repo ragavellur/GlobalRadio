@@ -37,7 +37,15 @@ const CAST_ICON_D = 'M2 12a10 10 0 0 1 10 10 M2 17a5 5 0 0 1 5 5 M2 22h.01 M16 2
 const AIRPLAY_ICON_D = 'M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1 M12 17l7 5H5l7-5z';
 const SONOS_ICON_D = 'M4 6h16 M2 12h20 M6 18h12';
 
-export default function OutputButton({ size = 18 }: { size?: number }) {
+export default function OutputButton({
+  size = 18,
+  trigger,
+  triggerLabel,
+}: {
+  size?: number;
+  trigger?: ReactNode;
+  triggerLabel?: string;
+}) {
   const { sonosSession, castSession } = useRadioStore();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>('menu');
@@ -96,20 +104,43 @@ export default function OutputButton({ size = 18 }: { size?: number }) {
       <button
         ref={buttonRef}
         onClick={handleToggle}
-        aria-label={activeName ? `Streaming on ${activeName}. Manage.` : 'Play on device'}
+        aria-label={triggerLabel ?? (activeName ? `Streaming on ${activeName}. Manage.` : 'Play on device')}
         title={activeName ? `Streaming on ${activeName}` : 'Play on device'}
-        className="flex items-center justify-center shrink-0 rounded-full transition-colors hover:bg-white/10"
-        style={{
-          width: size + 12,
-          height: size + 12,
-          background: activeName ? 'rgba(0,200,100,0.25)' : 'rgba(0,200,100,0.12)',
-          border: `1px solid ${activeName ? STROKE : 'rgba(0,200,100,0.35)'}`,
-          cursor: 'pointer',
-        }}
+        className={
+          trigger
+            ? 'flex items-center justify-center shrink-0 transition-colors bg-transparent hover:bg-[#494949]'
+            : 'flex items-center justify-center shrink-0 rounded-full transition-colors bg-transparent hover:bg-white/10'
+        }
+        style={
+          trigger
+            ? {
+                width: 50,
+                height: 50,
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }
+            : {
+                width: size + 12,
+                height: size + 12,
+                cursor: 'pointer',
+              }
+        }
       >
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={STROKE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d={CAST_ICON_D} />
-        </svg>
+        {trigger ?? (
+          <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={activeName ? STROKE : '#ffffff'}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d={CAST_ICON_D} />
+          </svg>
+        )}
       </button>
 
       {open &&

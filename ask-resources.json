@@ -1,0 +1,24 @@
+{
+  "askcliResourcesVersion": "2020-03-31",
+  "profiles": {
+    "default": {
+      "skillMetadata": {
+        "src": "/Users/Shared/globalradio/alexa"
+      },
+      "code": {
+        "default": {
+          "src": "/Users/Shared/globalradio/alexa/interactionModels"
+        }
+      },
+      "skillInfrastructure": {
+        "type": "@ask-cli/cfn-deployer",
+        "userConfig": {
+          "runtime": "nodejs16.x",
+          "handler": "index.handler",
+          "templatePath": "./infrastructure/cfn-deployer/skill-stack.yaml",
+          "awsRegion": "us-east-1"
+        }
+      }
+    }
+  }
+}
