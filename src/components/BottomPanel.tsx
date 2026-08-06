@@ -11,8 +11,8 @@ import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
 import { stopStreaming } from '../lib/sonos';
 import { stopCast } from '../lib/cast';
 import { sendToAlexa } from '../lib/alexa';
-import SonosButton from './SonosButton';
-import CastButton from './CastButton';
+import { registerAudio } from '../lib/airplay';
+import OutputButton from './OutputButton';
 
 export default function BottomPanel() {
   const {
@@ -67,6 +67,7 @@ export default function BottomPanel() {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.crossOrigin = 'anonymous';
+      registerAudio(audioRef.current);
     }
     const audio = audioRef.current;
 
@@ -406,8 +407,7 @@ function DrawerContent({
               </div>
             </div>
             <SendToAlexaButton station={currentStation} city={selectedCity} />
-            <SonosButton size={18} />
-            <CastButton size={18} />
+            <OutputButton size={18} />
             <button
               onClick={() => toggleFavoriteAction(currentStation, selectedCity)}
               className="ml-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
@@ -512,8 +512,7 @@ function MobileNowPlaying({
           size={20}
         />
         <SendToAlexaButton station={currentStation} city={selectedCity} />
-        <SonosButton size={15} />
-        <CastButton size={15} />
+        <OutputButton size={15} />
       </div>
       <div className="flex items-center justify-center px-2 pb-2 gap-2">
         <PlayButton
