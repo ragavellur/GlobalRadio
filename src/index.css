@@ -17,6 +17,18 @@ html, body, #root {
   color: #ffffff;
 }
 
+@supports (height: 100vh) {
+  html, body, #root {
+    height: 100vh;
+  }
+}
+
+@supports (height: 100svh) {
+  html, body, #root {
+    height: 100svh;
+  }
+}
+
 @supports (height: 100dvh) {
   html, body, #root {
     height: 100dvh;

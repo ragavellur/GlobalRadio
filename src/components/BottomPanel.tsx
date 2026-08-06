@@ -242,7 +242,7 @@ export default function BottomPanel() {
       {/* === Mobile panel (bottom sheet) === */}
       <div
         className="sm:hidden absolute inset-x-0 z-10 pointer-events-none flex flex-col justify-end"
-        style={{ top: 0, bottom: currentStation ? 102 : 0, overflow: 'hidden' }}
+        style={{ top: 0, bottom: currentStation ? 'calc(128px + env(safe-area-inset-bottom))' : 0, overflow: 'hidden' }}
       >
         <MobileDrawer
           selectedCity={selectedCity}
@@ -274,6 +274,9 @@ export default function BottomPanel() {
             sonosName={sonosSession?.name ?? null}
             castActive={!!castSession}
             castName={castSession?.deviceName ?? null}
+            volume={audioVolume}
+            onVolumeChange={handleVolumeChange}
+            onOpenStationChat={handleOpenStationChat}
           />
         </div>
       )}
@@ -496,6 +499,7 @@ function DrawerContent({
               castName={castName}
               isCurrentFavorite={currentFav}
               onToggleFavorite={() => toggleFavoriteAction(currentStation, selectedCity)}
+              onOpenStationChat={onOpenStationChat}
             />
           )}
         </>
@@ -609,7 +613,7 @@ function PlayerBar({
   currentStation, selectedCity, audioStatus, isPlaying,
   playStation, stations, togglePlayback, volume, onVolumeChange,
   sonosActive, sonosName, castActive, castName,
-  isCurrentFavorite, onToggleFavorite,
+  isCurrentFavorite, onToggleFavorite, onOpenStationChat,
 }: {
   currentStation: Station;
   selectedCity: any;
@@ -626,6 +630,7 @@ function PlayerBar({
   castName: string | null;
   isCurrentFavorite: boolean;
   onToggleFavorite: () => void;
+  onOpenStationChat: (station: Station) => void;
 }) {
   const handleSkip = (dir: 1 | -1) => {
     if (stations.length === 0) return;
@@ -660,6 +665,17 @@ function PlayerBar({
         >
           <svg width="32" height="32" viewBox="0 0 32 32" fill={isCurrentFavorite ? '#00C864' : 'none'} stroke="#00C864" strokeWidth="1.8">
             <path d="M11.198 9C8.85 9 7 10.89 7 13.29c0 3.128 1.92 5.82 9 11.71 7.08-5.89 9-8.582 9-11.71C25 10.89 23.15 9 20.802 9c-2.098 0-3.237 1.273-4.126 2.327l-.676.8-.676-.8C14.434 10.31 13.296 9 11.197 9h0z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => onOpenStationChat(currentStation)}
+          aria-label={`Chat about ${currentStation.name}`}
+          title={`Chat about ${currentStation.name}`}
+          className="flex items-center justify-center shrink-0 transition-colors bg-transparent hover:bg-[#494949]"
+          style={{ width: 50, height: 50, cursor: 'pointer', border: 'none', padding: 0 }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
           </svg>
         </button>
       </div>
@@ -773,6 +789,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 function MobileNowPlaying({
   currentStation, selectedCity, audioStatus, isPlaying,
   playStation, stations, togglePlayback, sonosActive, sonosName, castActive, castName,
+  volume, onVolumeChange, onOpenStationChat,
 }: {
   currentStation: Station;
   selectedCity: any;
@@ -785,12 +802,15 @@ function MobileNowPlaying({
   sonosName: string | null;
   castActive: boolean;
   castName: string | null;
+  volume: number;
+  onVolumeChange: (v: number) => void;
+  onOpenStationChat: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   return (
     <div
       className="shrink-0 rounded-t-lg overflow-hidden pointer-events-auto"
-      style={{ background: '#191919' }}
+      style={{ background: '#191919', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <div className="min-w-0 flex-1">
@@ -810,6 +830,17 @@ function MobileNowPlaying({
           onToggle={() => toggleFavoriteAction(currentStation, selectedCity)}
           size={20}
         />
+        <button
+          onClick={(e) => { e.stopPropagation(); onOpenStationChat(currentStation); }}
+          aria-label={`Chat about ${currentStation.name}`}
+          title={`Chat about ${currentStation.name}`}
+          className="flex items-center justify-center shrink-0 rounded-full bg-transparent hover:bg-white/10 transition-colors"
+          style={{ width: 32, height: 32, cursor: 'pointer', border: 'none' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        </button>
         <SendToAlexaButton station={currentStation} city={selectedCity} />
         <OutputButton size={15} />
       </div>
@@ -857,6 +888,59 @@ function MobileNowPlaying({
             <path d="M27.66 18.79v12.38c0 .55-.45 1-1 1h-.64c-.55 0-1-.45-1-1v-5.04L14.5 32.15c-.48.27-1.09.1-1.37-.38-.08-.15-.13-.32-.13-.49V18.72c0-.55.45-1 1-1 .17 0 .35.05.5.14l10.52 6.01v-5.08c0-.55.45-1 1-1h.64c.55 0 1 .45 1 1z"/>
           </svg>
         </PlayButton>
+      </div>
+
+      {/* Volume control */}
+      <div className="flex items-center px-3 pb-2 gap-2" style={{ height: 28 }}>
+        <svg width="16" height="16" viewBox="0 0 32 32" fill="rgba(255,255,255,0.85)">
+          <polygon points="28 8 21.714 12.645 17 12.645 17 19.355 21.189 19.355 28 24" />
+        </svg>
+        <div
+          className="relative flex items-center"
+          style={{ flex: 1, height: 28, cursor: 'pointer' }}
+          onPointerDown={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+            onVolumeChange(pct);
+          }}
+          onPointerMove={(e) => {
+            if ((e.buttons & 1) === 1) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+              onVolumeChange(pct);
+            }
+          }}
+        >
+          <div className="absolute" style={{ left: 0, right: 0, height: 2, borderRadius: 1, background: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }} />
+          <div className="absolute" style={{ left: 0, width: `${Math.round(volume * 100)}%`, height: 2, borderRadius: 1, background: '#00C864', pointerEvents: 'none' }} />
+          <div className="absolute rounded-full" style={{ left: `calc(${Math.round(volume * 100)}% - 5px)`, top: '50%', width: 10, height: 10, background: '#ffffff', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+            aria-label="Set Volume"
+            className="absolute inset-0"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              margin: 0,
+              width: '100%',
+              height: '100%',
+              background: 'transparent',
+              opacity: 0,
+              cursor: 'pointer',
+              zIndex: 1,
+              WebkitAppearance: 'none',
+              appearance: 'none',
+            }}
+          />
+        </div>
       </div>
     </div>
   );
