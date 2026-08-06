@@ -182,6 +182,11 @@ export function stopCast(): void {
 export function subscribeCast(listener: CastListener): () => void {
   listeners.add(listener);
   listener(currentState());
+  ensureCastReady()
+    .then(() => notify())
+    .catch(() => {
+      // Cast SDK unavailable (e.g. unsupported browser); button stays hidden.
+    });
   return () => {
     listeners.delete(listener);
   };
