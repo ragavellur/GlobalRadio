@@ -73,30 +73,38 @@ export default function CastPanel({ onClose, onBack }: { onClose: () => void; on
         </div>
       ) : (
         <>
-          <div className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            {currentStation
-              ? 'Pick a device below to play the current station on your speaker.'
-              : 'Pick a station first, then cast it to your speaker.'}
-          </div>
-          {castInfo.available && !castInfo.devicesAvailable && (
-            <div className="text-[12px] mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              No Chromecast devices found on this network.
+          {castInfo.error ? (
+            <div className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              {castInfo.error}
             </div>
+          ) : (
+            <>
+              <div className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                {currentStation
+                  ? 'Pick a device below to play the current station on your speaker.'
+                  : 'Pick a station first, then cast it to your speaker.'}
+              </div>
+              {castInfo.available && !castInfo.devicesAvailable && (
+                <div className="text-[12px] mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  No Chromecast devices found on this network.
+                </div>
+              )}
+              <button
+                onClick={() => void handleCast()}
+                disabled={busy || !currentStation}
+                className="w-full text-[13px] font-medium rounded-lg py-2 mt-3 transition-colors"
+                style={{
+                  background: 'var(--gr-accent)',
+                  color: '#0a0a0a',
+                  cursor: busy || !currentStation ? 'not-allowed' : 'pointer',
+                  opacity: busy || !currentStation ? 0.5 : 1,
+                  border: 'none',
+                }}
+              >
+                {busy ? 'Casting…' : 'Choose device and cast'}
+              </button>
+            </>
           )}
-          <button
-            onClick={() => void handleCast()}
-            disabled={busy || !currentStation}
-            className="w-full text-[13px] font-medium rounded-lg py-2 mt-3 transition-colors"
-            style={{
-              background: 'var(--gr-accent)',
-              color: '#0a0a0a',
-              cursor: busy || !currentStation ? 'not-allowed' : 'pointer',
-              opacity: busy || !currentStation ? 0.5 : 1,
-              border: 'none',
-            }}
-          >
-            {busy ? 'Casting…' : 'Choose device and cast'}
-          </button>
         </>
       )}
     </>

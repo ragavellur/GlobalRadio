@@ -18,6 +18,7 @@ export interface CastStateInfo {
   connected: boolean;
   devicesAvailable: boolean;
   deviceName: string | null;
+  error?: string | null;
 }
 
 type CastListener = (state: CastStateInfo) => void;
@@ -58,15 +59,20 @@ function loadCastSdk(): Promise<void> {
     win.__onGCastApiAvailable = (available: boolean) => {
       if (existing) existing(available);
       if (available) resolve();
-      else reject(new Error('Google Cast is not available in this browser'));
+      else
+        reject(
+          new Error(
+            "Google Cast isn't available in this app. Use the Chrome web version, Air Play, or Sonos."
+          )
+        );
     };
     const script = document.createElement('script');
     script.src = CAST_SDK_URL;
     script.async = true;
-    script.onerror = () => reject(new Error('Failed to load the Google Cast SDK'));
+    script.onerror = () => reject(new Error('Failed to load Google Cast'));
     document.head.appendChild(script);
     window.setTimeout(() => {
-      if (!sdkLoaded()) reject(new Error('Google Cast SDK load timed out'));
+      if (!sdkLoaded()) reject(new Error('Google Cast took too long to load'));
     }, 15000);
   });
   return sdkPromise;
@@ -184,8 +190,10 @@ export function subscribeCast(listener: CastListener): () => void {
   listener(currentState());
   ensureCastReady()
     .then(() => notify())
-    .catch(() => {
-      // Cast SDK unavailable (e.g. unsupported browser); button stays hidden.
+    .catch((e: unknown) => {
+      listeners.forEach((l) =>
+        l({ ...currentState(), error: e instanceof Error ? e.message : 'Google Cast is unavailable' })
+      );
     });
   return () => {
     listeners.delete(listener);
