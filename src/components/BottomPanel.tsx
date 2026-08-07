@@ -9,7 +9,6 @@ import { useSignInDialog } from './SignInDialog';
 import type { Station, City } from '../types';
 import { useListenerCounts } from '../hooks/useListenerCounts';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
-import { stopStreaming } from '../lib/sonos';
 import { stopCast } from '../lib/cast';
 import { registerAudio } from '../lib/airplay';
 import OutputButton from './OutputButton';
@@ -21,7 +20,7 @@ export default function BottomPanel() {
   const {
     selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession, castSession, drawerOpen,
     audioVolume, setVolume,
-    playStation, selectStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, setCastSession, openSocialRoom, setDrawerOpen,
+    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setCastSession, openSocialRoom, setDrawerOpen,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -114,15 +113,6 @@ export default function BottomPanel() {
     }
   }, []);
 
-  const stopSonosIfActive = useCallback(async () => {
-    if (!sonosSessionRef.current) return;
-    try {
-      await stopStreaming();
-    } finally {
-      setSonosSession(null);
-    }
-  }, [setSonosSession]);
-
   const stopCastIfActive = useCallback(() => {
     if (!castSessionRef.current) return;
     stopCast();
@@ -133,24 +123,17 @@ export default function BottomPanel() {
     if (isPlaying) {
       pausePlayback();
     } else if (currentStation) {
-      if (sonosSessionRef.current) {
-        void stopSonosIfActive().then(() => {
-          stopCastIfActive();
-          playStation(currentStation);
-        });
-      } else {
-        stopCastIfActive();
-        playStation(currentStation);
-      }
+      stopCastIfActive();
+      playStation(currentStation);
     }
-  }, [isPlaying, currentStation, pausePlayback, playStation, stopSonosIfActive, stopCastIfActive]);
+  }, [isPlaying, currentStation, pausePlayback, playStation, stopCastIfActive]);
 
   const handlePlayStation = useCallback(
     (station: Station) => {
       stopCastIfActive();
-      selectStation(station);
+      playStation(station);
     },
-    [selectStation, stopCastIfActive]
+    [playStation, stopCastIfActive]
   );
 
   useEffect(() => {

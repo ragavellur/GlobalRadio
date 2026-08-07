@@ -7,7 +7,7 @@ const POLL_INTERVAL = 30_000;
 
 export function useSonosSession() {
   const {
-    cities, selectedCity, sonosSession,
+    cities, selectedCity, sonosSession, isPlaying,
     setSonosSession, selectCity, setPendingStationUrl, setStationSilent, playStation,
   } = useRadioStore();
   const [resume, setResume] = useState<SonosSession | null>(null);
@@ -17,6 +17,10 @@ export function useSonosSession() {
   useEffect(() => {
     sonosSessionRef.current = sonosSession;
   }, [sonosSession]);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   // Point the UI at the station that's playing on Sonos without starting local audio.
   const applySession = useCallback(
@@ -68,9 +72,16 @@ export function useSonosSession() {
         const result = await checkSonosSession();
         if (result.status === 'streaming') {
           const s = result.session;
-          applySession(s);
           const key = `${s.id}:${s.stationUrl}`;
-          if (showBanner && lastHandledKeyRef.current !== key) {
+          // If the user is actively listening locally, keep their selection
+          // (Sonos keeps streaming in parallel). Only track the session so the
+          // UI can still show / manage what's on Sonos.
+          if (isPlayingRef.current) {
+            setSonosSession(s);
+          } else {
+            applySession(s);
+          }
+          if (showBanner && !isPlayingRef.current && lastHandledKeyRef.current !== key) {
             lastHandledKeyRef.current = key;
             setResume(s);
           } else if (lastHandledKeyRef.current !== key) {

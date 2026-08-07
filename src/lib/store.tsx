@@ -7,7 +7,6 @@ interface RadioStore extends RadioState {
   setIndexLoaded: (loaded: boolean) => void;
   selectCity: (city: City | null) => void;
   playStation: (station: Station) => void;
-  selectStation: (station: Station) => void;
   pausePlayback: () => void;
   stopPlayback: () => void;
   setVolume: (volume: number) => void;
@@ -65,16 +64,6 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
   const playStation = useCallback((station: Station) => {
     setState((prev) => ({ ...prev, currentStation: station, isPlaying: true }));
-  }, []);
-
-  // User selection: if Sonos is streaming, keep it playing and just point the
-  // UI at the picked station (silent select). Otherwise play locally.
-  const selectStation = useCallback((station: Station) => {
-    setState((prev) =>
-      prev.sonosSession
-        ? { ...prev, currentStation: station, isPlaying: false }
-        : { ...prev, currentStation: station, isPlaying: true }
-    );
   }, []);
 
   const stopPlayback = useCallback(() => {
@@ -162,7 +151,6 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setIndexLoaded,
         selectCity,
         playStation,
-        selectStation,
         pausePlayback,
         stopPlayback,
         setVolume,
