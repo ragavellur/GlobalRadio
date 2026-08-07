@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useRadioStore } from '../lib/store';
 import { SONOS_ENABLED } from '../lib/sonos';
@@ -62,7 +62,7 @@ export default function OutputButton({
   const [view, setView] = useState<View>('menu');
   const [menuError, setMenuError] = useState<string | null>(null);
   const [alexaState, setAlexaState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [popupPos, setPopupPos] = useState<{ right: number; bottom: number } | null>(null);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
@@ -78,11 +78,22 @@ export default function OutputButton({
       if (!inRoot && !inPopup) setOpen(false);
     };
     const onScroll = () => setOpen(false);
+    const onResize = () => setOpen(false);
     document.addEventListener('mousedown', onDocClick);
     window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
     return () => {
       document.removeEventListener('mousedown', onDocClick);
       window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  const viewportSize = useCallback(() => {
+    const vv = window.visualViewport;
+    return {
+      width: vv?.width ?? window.innerWidth,
+      height: vv?.height ?? window.innerHeight,
     };
   }, []);
 
@@ -92,15 +103,38 @@ export default function OutputButton({
     if (next) {
       setView('menu');
       setMenuError(null);
+      setAlexaState('idle');
       const rect = buttonRef.current?.getBoundingClientRect();
       if (rect) {
+        const { width: vw, height: vh } = viewportSize();
+        const gap = 8;
+        const estH = 240;
+        const openBelow = rect.bottom + gap + estH <= vh - gap;
         setPopupPos({
-          right: window.innerWidth - rect.right,
-          bottom: window.innerHeight - rect.top + 8,
+          top: openBelow ? rect.bottom + gap : Math.max(gap, rect.top - gap - estH),
+          left: Math.max(gap, rect.right - 280 - gap),
         });
       }
     }
-  }, [open]);
+  }, [open, viewportSize]);
+
+  useLayoutEffect(() => {
+    if (!open || !popupRef.current || !buttonRef.current) return;
+    const pop = popupRef.current;
+    const btn = buttonRef.current;
+    const popRect = pop.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    const { width: vw, height: vh } = viewportSize();
+    const gap = 8;
+    const popH = popRect.height;
+    const popW = popRect.width;
+    let top = btnRect.bottom + gap;
+    if (top + popH > vh - gap) top = btnRect.top - gap - popH;
+    if (top < gap) top = gap;
+    let left = btnRect.right - popW;
+    left = Math.max(gap, Math.min(left, vw - popW - gap));
+    setPopupPos({ top, left });
+  }, [open, view, viewportSize]);
 
   const handleAirPlay = useCallback(() => {
     const res = showAirPlayPicker();
@@ -196,8 +230,9 @@ export default function OutputButton({
               ref={popupRef}
               style={{
                 position: 'fixed',
-                right: popupPos.right,
-                bottom: popupPos.bottom,
+                top: popupPos.top,
+                left: popupPos.left,
+                maxWidth: 'min(272px, calc(100vw - 16px))',
                 zIndex: 41,
                 width: 272,
                 background: '#202020',
