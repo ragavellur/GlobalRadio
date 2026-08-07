@@ -11,7 +11,6 @@ import { useListenerCounts } from '../hooks/useListenerCounts';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
 import { stopStreaming } from '../lib/sonos';
 import { stopCast } from '../lib/cast';
-import { sendToAlexa } from '../lib/alexa';
 import { registerAudio } from '../lib/airplay';
 import OutputButton from './OutputButton';
 
@@ -654,8 +653,7 @@ function PlayerBar({
             {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
           </div>
         </div>
-        <SendToAlexaButton station={currentStation} city={selectedCity} size={22} />
-        <OutputButton size={22} />
+        <OutputButton size={22} station={currentStation} city={selectedCity} />
         <button
           onClick={onToggleFavorite}
           aria-label="Add to favorites"
@@ -841,8 +839,7 @@ function MobileNowPlaying({
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
           </svg>
         </button>
-        <SendToAlexaButton station={currentStation} city={selectedCity} />
-        <OutputButton size={15} />
+        <OutputButton size={15} station={currentStation} city={selectedCity} />
       </div>
       <div className="flex items-center justify-center px-2 pb-2 gap-2">
         <PlayButton
@@ -1134,72 +1131,6 @@ function FavoriteHeart({
     >
       <svg width={size} height={size} viewBox="0 0 32 32" fill={active ? '#00C864' : 'none'} stroke={active ? '#00C864' : 'rgba(255,255,255,0.55)'} strokeWidth="2">
         <path d="M10.4 7.5C7.66 7.5 5.5 9.63 5.5 12.33c0 3.52 2.24 6.55 10.5 13.17 8.26-6.63 10.5-9.66 10.5-13.17 0-2.7-2.16-4.83-4.9-4.83-2.45 0-3.78 1.43-4.81 2.62l-.79.9-.79-.9C14.17 8.97 12.85 7.5 10.4 7.5z" />
-      </svg>
-    </button>
-  );
-}
-
-/* ===== Send to Alexa ===== */
-function SendToAlexaButton({
-  station, city, size = 15,
-}: {
-  station: Station;
-  city: any;
-  size?: number;
-}) {
-  const { user } = useAuth();
-  const { openSignInDialog } = useSignInDialog();
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-
-  const handleClick = useCallback(async () => {
-    if (!user) {
-      openSignInDialog();
-      return;
-    }
-    if (!city) return;
-    setState('sending');
-    try {
-      await sendToAlexa({
-        user_id: user.id,
-        station_name: station.name,
-        station_url: station.url,
-        city: city.city ?? '',
-        country: city.country ?? '',
-      });
-      setState('sent');
-    } catch {
-      setState('error');
-    }
-    window.setTimeout(() => setState('idle'), 2500);
-  }, [user, city, station, openSignInDialog]);
-
-  const title =
-    state === 'sent'
-      ? "Sent! Say 'Alexa, play global radio'"
-      : state === 'error'
-        ? 'Failed to send to Alexa'
-        : !user
-          ? 'Sign in to send this station to your Alexa'
-          : 'Send to Alexa';
-
-  const color = state === 'sent' ? '#00C864' : state === 'error' ? '#ff5555' : 'rgba(255,255,255,0.55)';
-
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); void handleClick(); }}
-      aria-label="Send to Alexa"
-      title={title}
-      className="flex items-center justify-center shrink-0 rounded-full bg-transparent hover:bg-white/10 transition-colors"
-      style={{
-        width: size + 14,
-        height: size + 14,
-        cursor: 'pointer',
-        border: 'none',
-        color,
-      }}
-    >
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
       </svg>
     </button>
   );

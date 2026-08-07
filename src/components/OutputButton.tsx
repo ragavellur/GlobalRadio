@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom';
 import { useRadioStore } from '../lib/store';
 import { SONOS_ENABLED } from '../lib/sonos';
 import { showAirPlayPicker } from '../lib/airplay';
+import { sendToAlexa } from '../lib/alexa';
+import { useAuth } from '../lib/auth';
+import { useSignInDialog } from './SignInDialog';
+import type { Station } from '../types';
 import SonosPanel from './SonosPanel';
 import CastPanel from './CastPanel';
 
@@ -36,20 +40,28 @@ function MenuRow({ icon, label, sub, onClick }: { icon: ReactNode; label: string
 const CAST_ICON_D = 'M2 12a10 10 0 0 1 10 10 M2 17a5 5 0 0 1 5 5 M2 22h.01 M16 22h4a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v3';
 const AIRPLAY_ICON_D = 'M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1 M12 17l7 5H5l7-5z';
 const SONOS_ICON_D = 'M4 6h16 M2 12h20 M6 18h12';
+const ALEXA_ICON_D = 'M11 5 6 9H2v6h4l5 4V5z M15.54 8.46a5 5 0 0 1 0 7.07 M19.07 4.93a10 10 0 0 1 0 14.14';
 
 export default function OutputButton({
   size = 18,
   trigger,
   triggerLabel,
+  station,
+  city,
 }: {
   size?: number;
   trigger?: ReactNode;
   triggerLabel?: string;
+  station?: Station | null;
+  city?: any;
 }) {
   const { sonosSession, castSession } = useRadioStore();
+  const { user } = useAuth();
+  const { openSignInDialog } = useSignInDialog();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>('menu');
   const [menuError, setMenuError] = useState<string | null>(null);
+  const [alexaState, setAlexaState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [popupPos, setPopupPos] = useState<{ right: number; bottom: number } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -98,6 +110,38 @@ export default function OutputButton({
       setOpen(false);
     }
   }, []);
+
+  const handleAlexaCast = useCallback(async () => {
+    if (!station || !city) return;
+    if (!user) {
+      openSignInDialog();
+      return;
+    }
+    setAlexaState('sending');
+    try {
+      await sendToAlexa({
+        user_id: user.id,
+        station_name: station.name,
+        station_url: station.url,
+        city: city.city ?? '',
+        country: city.country ?? '',
+      });
+      setAlexaState('sent');
+    } catch {
+      setAlexaState('error');
+    }
+    window.setTimeout(() => setAlexaState('idle'), 3000);
+  }, [user, station, city, openSignInDialog]);
+
+  const alexaSub = !user
+    ? 'Sign in to send'
+    : alexaState === 'sending'
+      ? 'Sending...'
+      : alexaState === 'sent'
+        ? 'Sent! Say "Alexa, play global radio"'
+        : alexaState === 'error'
+          ? 'Failed to send'
+          : undefined;
 
   return (
     <div ref={rootRef} className="relative" style={{ display: 'inline-block' }}>
@@ -193,6 +237,12 @@ export default function OutputButton({
                     icon={<Icon d={AIRPLAY_ICON_D} />}
                     label="Air Play"
                     onClick={handleAirPlay}
+                  />
+                  <MenuRow
+                    icon={<Icon d={ALEXA_ICON_D} />}
+                    label="Alexa Cast"
+                    sub={alexaSub}
+                    onClick={() => void handleAlexaCast()}
                   />
                 </>
               )}
