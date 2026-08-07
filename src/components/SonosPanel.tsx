@@ -39,6 +39,10 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
     }
   }, []);
 
+  useEffect(() => {
+    if (isConnected()) void loadGroups();
+  }, [loadGroups]);
+
   const handleConnect = useCallback(async () => {
     setConnecting(true);
     setError(null);
