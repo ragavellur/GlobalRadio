@@ -3,9 +3,10 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useRadioStore } from '../lib/store';
 import { buildSpatialIndex, findNearestCityFromPoint, findNearestCity } from '../lib/spatialIndex';
-import { addDotLayer, highlightCity } from '../lib/dotRenderer';
+import { addDotLayer, highlightCity, setDotColor } from '../lib/dotRenderer';
 import { initSearch } from '../lib/search';
 import { transformCities } from '../lib/transform';
+import { getTheme } from '../lib/themes';
 import type { City } from '../types';
 
 export default function Globe() {
@@ -14,7 +15,14 @@ export default function Globe() {
   const citiesRef = useRef<City[]>([]);
   const rotationRef = useRef<number | null>(null);
   const rotationActiveRef = useRef(false);
-  const { setCities, setIndexLoaded, selectCity } = useRadioStore();
+  const { setCities, setIndexLoaded, selectCity, themeId } = useRadioStore();
+  const accentRef = useRef(getTheme(themeId)?.accent ?? '#00C864');
+
+  useEffect(() => {
+    accentRef.current = getTheme(themeId)?.accent ?? '#00C864';
+    const m = mapRef.current;
+    if (m) setDotColor(m, accentRef.current);
+  }, [themeId]);
 
   const handleCityClick = useCallback((city: City) => {
     if (!city || !mapRef.current) return;
@@ -187,9 +195,9 @@ export default function Globe() {
       setIndexLoaded(true);
 
       if (m.loaded()) {
-        addDotLayer(m, data);
+        addDotLayer(m, data, accentRef.current);
       } else {
-        m.once('load', () => addDotLayer(m, data));
+        m.once('load', () => addDotLayer(m, data, accentRef.current));
       }
     } catch (err) {
       console.error('Failed to load city index:', err);

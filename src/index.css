@@ -19,6 +19,8 @@ html, body, #root {
 
 :root {
   --app-vh: 100vh;
+  --gr-accent: #00C2FF;
+  --gr-accent-rgb: 0, 194, 255;
 }
 
 @supports (height: 100svh) {
@@ -89,7 +91,7 @@ input[type="range"]::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #00C864;
+  background: var(--gr-accent, var(--gr-accent));
   cursor: pointer;
 }
 
@@ -97,7 +99,7 @@ input[type="range"]::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #00C864;
+  background: var(--gr-accent, var(--gr-accent));
   cursor: pointer;
   border: none;
 }

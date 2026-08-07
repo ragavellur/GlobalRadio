@@ -19,8 +19,8 @@ export default function UpdateToast() {
         </p>
         <button
           onClick={applyUpdate}
-          className="py-2 px-4 rounded-full text-[13px] text-white font-medium whitespace-nowrap transition-colors"
-          style={{ background: '#00C864', cursor: 'pointer', border: 'none' }}
+          className="py-2 px-4 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors"
+          style={{ background: 'var(--gr-accent)', color: '#0a0a0a', cursor: 'pointer', border: 'none' }}
         >
           Update Now
         </button>

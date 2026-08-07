@@ -43,7 +43,7 @@ function NotificationsPanelInner() {
           {unread > 0 && (
             <span
               className="flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, padding: '0 4px', background: '#00C864' }}
+              style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, padding: '0 4px', background: 'var(--gr-accent)' }}
             >
               {unread > 99 ? '99+' : unread}
             </span>
@@ -71,7 +71,7 @@ function NotificationsPanelInner() {
                   <div key={n.id} className="px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[12px] font-semibold text-white truncate">{n.title}</span>
-                      {!n.is_read && <span className="rounded-full shrink-0" style={{ width: 6, height: 6, background: '#00C864' }} />}
+                      {!n.is_read && <span className="rounded-full shrink-0" style={{ width: 6, height: 6, background: 'var(--gr-accent)' }} />}
                     </div>
                     {n.body && <div className="text-[12px] text-white/45 truncate mt-0.5">{n.body}</div>}
                     <div className="text-[10px] text-white/25 mt-0.5">{timeAgo(n.created_at)}</div>

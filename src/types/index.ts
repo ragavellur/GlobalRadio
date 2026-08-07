@@ -65,6 +65,7 @@ export interface RadioState {
   currentStation: Station | null;
   isPlaying: boolean;
   audioVolume: number;
+  themeId: string;
   searchQuery: string;
   searchResults: City[];
   sidebarOpen: boolean;

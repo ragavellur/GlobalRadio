@@ -112,7 +112,7 @@ function LivePanelInner() {
                 >
                   <span
                     className="flex items-center justify-center rounded-full text-[11px] font-bold shrink-0"
-                    style={{ minWidth: 34, height: 22, padding: '0 8px', background: 'rgba(0,200,100,0.15)', color: '#00C864' }}
+                    style={{ minWidth: 34, height: 22, padding: '0 8px', background: 'rgba(var(--gr-accent-rgb),0.15)', color: 'var(--gr-accent)' }}
                   >
                     {ls.listeners}
                   </span>
@@ -162,12 +162,12 @@ function LivePanelInner() {
                   style={{
                     width: 26,
                     height: 26,
-                    background: 'rgba(0,200,100,0.12)',
-                    border: '1px solid rgba(0,200,100,0.35)',
+                    background: 'rgba(var(--gr-accent-rgb),0.12)',
+                    border: '1px solid rgba(var(--gr-accent-rgb),0.35)',
                     cursor: 'pointer',
                   }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2">
                     <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                   </svg>
                 </button>
@@ -192,9 +192,9 @@ function LivePanelInner() {
                         className="flex items-center justify-center shrink-0 rounded-full text-[11px] font-medium"
                         style={{
                           padding: '3px 11px',
-                          background: 'rgba(0,200,100,0.12)',
-                          border: '1px solid rgba(0,200,100,0.35)',
-                          color: '#00C864',
+                          background: 'rgba(var(--gr-accent-rgb),0.12)',
+                          border: '1px solid rgba(var(--gr-accent-rgb),0.35)',
+                          color: 'var(--gr-accent)',
                           cursor: 'pointer',
                           transition: 'background 0.15s',
                         }}

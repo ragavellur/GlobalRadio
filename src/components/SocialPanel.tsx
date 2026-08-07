@@ -70,7 +70,7 @@ function SocialPanelInner() {
         {dmUnread > 0 && (
           <span
             className="flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, padding: '0 4px', background: '#00C864' }}
+            style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, padding: '0 4px', background: 'var(--gr-accent)' }}
           >
             {dmUnread > 99 ? '99+' : dmUnread}
           </span>
@@ -195,8 +195,8 @@ function PeopleView({
             style={{
               cursor: 'pointer',
               border: 'none',
-              background: scope === c.key ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.08)',
-              color: scope === c.key ? '#00C864' : 'rgba(255,255,255,0.6)',
+              background: scope === c.key ? 'rgba(var(--gr-accent-rgb),0.2)' : 'rgba(255,255,255,0.08)',
+              color: scope === c.key ? 'var(--gr-accent)' : 'rgba(255,255,255,0.6)',
             }}
           >
             {c.label}
@@ -263,7 +263,7 @@ function UserRow({
           {user.online && (
             <span
               className="rounded-full shrink-0"
-              style={{ width: 7, height: 7, background: '#00C864' }}
+              style={{ width: 7, height: 7, background: 'var(--gr-accent)' }}
               title="Online now"
             />
           )}
@@ -291,7 +291,7 @@ function InboxRow({ conv, meId, onOpen }: { conv: Conversation; meId: string | n
       {conv.unread > 0 && (
         <span
           className="flex items-center justify-center rounded-full text-[10px] font-bold text-white shrink-0"
-          style={{ minWidth: 18, height: 18, padding: '0 5px', background: '#00C864' }}
+          style={{ minWidth: 18, height: 18, padding: '0 5px', background: 'var(--gr-accent)' }}
         >
           {conv.unread}
         </span>

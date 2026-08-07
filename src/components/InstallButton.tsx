@@ -72,8 +72,8 @@ export default function InstallButton() {
             <div className="text-[12px] text-white/50">Tap Share, then Add to Home Screen</div>
             <button
               onClick={() => setHintOpen(false)}
-              className="mt-3 w-full py-2 rounded-full text-[13px] text-white"
-              style={{ background: '#00C864', cursor: 'pointer', border: 'none' }}
+              className="mt-3 w-full py-2 rounded-full text-[13px] font-medium"
+              style={{ background: 'var(--gr-accent)', color: '#0a0a0a', cursor: 'pointer', border: 'none' }}
             >
               Got it
             </button>

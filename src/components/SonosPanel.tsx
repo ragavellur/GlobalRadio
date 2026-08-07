@@ -123,7 +123,7 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
           disabled={connecting}
           className="w-full rounded-lg text-[13px] font-medium py-2 transition-colors"
           style={{
-            background: '#00C864',
+            background: 'var(--gr-accent)',
             color: '#0a0a0a',
             cursor: connecting ? 'wait' : 'pointer',
             opacity: connecting ? 0.6 : 1,
@@ -145,7 +145,7 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
             <div key={g.id} className="flex items-center gap-2 py-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] truncate">{g.name}</div>
-                <div className="text-[11px]" style={{ color: activeName === g.name ? '#00C864' : 'rgba(255,255,255,0.4)' }}>
+                <div className="text-[11px]" style={{ color: activeName === g.name ? 'var(--gr-accent)' : 'rgba(255,255,255,0.4)' }}>
                   {activeName === g.name ? 'Streaming here' : 'Sonos'}
                 </div>
               </div>
@@ -154,8 +154,8 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
                 disabled={!!busyGroup || !currentStation}
                 className="text-[12px] font-medium rounded-full px-3 py-1 transition-colors"
                 style={{
-                  background: activeName === g.name ? 'rgba(0,200,100,0.2)' : 'rgba(255,255,255,0.1)',
-                  color: activeName === g.name ? '#00C864' : '#fff',
+                  background: activeName === g.name ? 'rgba(var(--gr-accent-rgb),0.2)' : 'rgba(255,255,255,0.1)',
+                  color: activeName === g.name ? 'var(--gr-accent)' : '#fff',
                   cursor: !currentStation || busyGroup ? 'not-allowed' : 'pointer',
                   opacity: !currentStation || busyGroup ? 0.5 : 1,
                   border: 'none',

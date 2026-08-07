@@ -38,7 +38,7 @@ export default class ChunkLoadErrorBoundary extends Component<Props, State> {
               width: 32,
               height: 32,
               border: '3px solid rgba(255,255,255,0.15)',
-              borderTopColor: '#00C864',
+              borderTopColor: 'var(--gr-accent)',
             }}
           />
           <p className="text-white/60 text-[13px]">Updating app…</p>

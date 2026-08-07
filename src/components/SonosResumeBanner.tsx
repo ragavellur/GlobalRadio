@@ -25,7 +25,7 @@ export default function SonosResumeBanner({
         className="rounded-lg overflow-hidden"
         style={{
           background: '#202020',
-          border: '1px solid rgba(0,200,100,0.45)',
+          border: '1px solid rgba(var(--gr-accent-rgb),0.45)',
           boxShadow: '0 8px 24px rgba(0,0,0,0.55)',
           color: '#fff',
           fontFamily: 'inherit',
@@ -33,13 +33,13 @@ export default function SonosResumeBanner({
         }}
       >
         <div className="flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M2 10v4h3l4 4V6L5 10H2z" />
             <path d="M15 8a5 5 0 0 1 0 8" />
             <path d="M17.5 5.5a9 9 0 0 1 0 13" />
           </svg>
           <div className="min-w-0 flex-1">
-            <div className="text-[14px] font-semibold truncate" style={{ color: '#00C864' }} dir="auto">
+            <div className="text-[14px] font-semibold truncate" style={{ color: 'var(--gr-accent)' }} dir="auto">
               {session.stationName}
             </div>
             <div className="text-[12px] text-white/60 truncate">
@@ -64,7 +64,7 @@ export default function SonosResumeBanner({
             onClick={onPlayHere}
             className="flex-1 rounded-lg text-[13px] font-medium py-1.5 transition-colors"
             style={{
-              background: '#00C864',
+              background: 'var(--gr-accent)',
               color: '#0a0a0a',
               border: 'none',
               cursor: 'pointer',

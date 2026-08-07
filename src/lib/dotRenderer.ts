@@ -5,7 +5,7 @@ const SOURCE_ID = 'radio-cities';
 const LAYER_ID = 'radio-dots';
 const SELECTED_RING_LAYER_ID = 'radio-dots-selected-ring';
 
-export function addDotLayer(map: MaplibreMap, cities: City[]) {
+export function addDotLayer(map: MaplibreMap, cities: City[], accent: string) {
   const features = cities.map((city) => ({
     type: 'Feature' as const,
     geometry: {
@@ -39,7 +39,7 @@ export function addDotLayer(map: MaplibreMap, cities: City[]) {
         3.5,
         2,
       ],
-      'circle-color': '#00C864',
+      'circle-color': accent,
       'circle-opacity': 0.85,
       'circle-blur': 0.3,
       'circle-stroke-width': [
@@ -51,6 +51,11 @@ export function addDotLayer(map: MaplibreMap, cities: City[]) {
       'circle-stroke-color': '#ffffff',
     },
   });
+}
+
+export function setDotColor(map: MaplibreMap, accent: string) {
+  if (!map.getLayer(LAYER_ID)) return;
+  map.setPaintProperty(LAYER_ID, 'circle-color', accent);
 }
 
 export function highlightCity(map: MaplibreMap, cityId: number | null) {

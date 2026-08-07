@@ -4,9 +4,12 @@ import App from './App';
 import UpdateToast from './components/UpdateToast';
 import ChunkLoadErrorBoundary from './components/ChunkLoadErrorBoundary';
 import { initUpdateSystem } from './lib/update';
+import { loadThemeId, getTheme, applyThemeVars } from './lib/themes';
 import './index.css';
 
 initUpdateSystem();
+
+applyThemeVars(getTheme(loadThemeId())!);
 
 function applyViewportHeight() {
   const vv = window.visualViewport;

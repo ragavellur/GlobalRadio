@@ -88,7 +88,7 @@ export default function CastPanel({ onClose, onBack }: { onClose: () => void; on
             disabled={busy || !currentStation}
             className="w-full text-[13px] font-medium rounded-lg py-2 mt-3 transition-colors"
             style={{
-              background: '#00C864',
+              background: 'var(--gr-accent)',
               color: '#0a0a0a',
               cursor: busy || !currentStation ? 'not-allowed' : 'pointer',
               opacity: busy || !currentStation ? 0.5 : 1,

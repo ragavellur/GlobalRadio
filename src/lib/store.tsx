@@ -1,5 +1,6 @@
-import { useState, useCallback, createContext, useContext } from 'react';
+import { useState, useCallback, useEffect, createContext, useContext } from 'react';
 import type { City, Station, SocialRoom, RadioState, SonosSession, CastSession } from '../types';
+import { loadThemeId, getTheme, applyThemeVars, THEME_KEY, DEFAULT_THEME_ID } from './themes';
 
 interface RadioStore extends RadioState {
   setCities: (cities: City[]) => void;
@@ -21,6 +22,7 @@ interface RadioStore extends RadioState {
   setSonosSession: (session: SonosSession | null) => void;
   setCastSession: (session: CastSession | null) => void;
   setStationSilent: (station: Station) => void;
+  setTheme: (themeId: string) => void;
 }
 
 const RadioContext = createContext<RadioStore | null>(null);
@@ -33,6 +35,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     currentStation: null,
     isPlaying: false,
     audioVolume: 0.8,
+    themeId: loadThemeId(),
     searchQuery: '',
     searchResults: [],
     sidebarOpen: false,
@@ -121,6 +124,18 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, currentStation: station, isPlaying: false }));
   }, []);
 
+  const setTheme = useCallback((themeId: string) => {
+    setState((prev) => ({ ...prev, themeId }));
+  }, []);
+
+  useEffect(() => {
+    const theme = getTheme(state.themeId) ?? getTheme(DEFAULT_THEME_ID)!;
+    applyThemeVars(theme);
+    try {
+      localStorage.setItem(THEME_KEY, state.themeId);
+    } catch {}
+  }, [state.themeId]);
+
   return (
     <RadioContext.Provider
       value={{
@@ -144,6 +159,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setSonosSession,
         setCastSession,
         setStationSilent,
+        setTheme,
       }}
     >
       {children}

@@ -22,7 +22,7 @@ export default function PanelHeader({ title, onBack }: { title: string; onBack?:
           </svg>
         </button>
       )}
-      <div className="text-[13px] font-semibold" style={{ color: '#00C864' }}>{title}</div>
+      <div className="text-[13px] font-semibold" style={{ color: 'var(--gr-accent)' }}>{title}</div>
     </div>
   );
 }

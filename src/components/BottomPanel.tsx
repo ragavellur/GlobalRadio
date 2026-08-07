@@ -419,7 +419,7 @@ function DrawerContent({
 
             {/* Listener count — inside banner block, at the bottom */}
             {counts.cityCount > 0 && (
-              <div className="shrink-0 px-5 pb-2 text-[12px]" style={{ color: '#00C864' }}>
+              <div className="shrink-0 px-5 pb-2 text-[12px]" style={{ color: 'var(--gr-accent)' }}>
                 {counts.cityCount} listening now
               </div>
             )}
@@ -537,7 +537,7 @@ function GStationRow({
           border: 'none',
           background: 'transparent',
           padding: 0,
-          color: isCurrent ? '#00C864' : '#ffffff',
+          color: isCurrent ? 'var(--gr-accent)' : '#ffffff',
           fontSize: 15.4,
           fontWeight: 400,
         }}
@@ -571,7 +571,7 @@ function GCityRow({
       {typeof count === 'number' && (
         <span
           className="flex items-center justify-center rounded-full shrink-0 mr-3"
-          style={{ width: 28, height: 28, background: '#00C864', color: '#2b2b2b', fontSize: 13.8 }}
+          style={{ width: 28, height: 28, background: 'var(--gr-accent)', color: '#2b2b2b', fontSize: 13.8 }}
         >
           {count}
         </span>
@@ -642,13 +642,13 @@ function PlayerBar({
     <div className="flex flex-col shrink-0" style={{ background: '#191919', height: 100 }}>
       <div className="flex items-center" style={{ height: 50 }}>
         <div className="min-w-0 flex-1 pl-4">
-          <div className="truncate leading-tight" style={{ color: '#00C864', fontSize: 15.4, fontWeight: 400 }} dir="auto">
+          <div className="truncate leading-tight" style={{ color: 'var(--gr-accent)', fontSize: 15.4, fontWeight: 400 }} dir="auto">
             {currentStation.name}
           </div>
           <div className="truncate" style={{ color: '#ffffff', fontSize: 10.5, fontWeight: 400 }}>
             {selectedCity?.city}, {countryName(selectedCity?.country ?? '')}
-            {sonosActive && <span style={{ color: '#00C864', marginLeft: 6 }}>· {sonosName}</span>}
-            {castActive && <span style={{ color: '#00C864', marginLeft: 6 }}>· {castName}</span>}
+            {sonosActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 6 }}>· {sonosName}</span>}
+            {castActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 6 }}>· {castName}</span>}
             {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 6 }}>(Offline)</span>}
             {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
           </div>
@@ -661,7 +661,7 @@ function PlayerBar({
           className="flex items-center justify-center shrink-0 transition-colors bg-transparent hover:bg-[#494949]"
           style={{ width: 50, height: 50, cursor: 'pointer', border: 'none', padding: 0 }}
         >
-          <svg width="32" height="32" viewBox="0 0 32 32" fill={isCurrentFavorite ? '#00C864' : 'none'} stroke="#00C864" strokeWidth="1.8">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill={isCurrentFavorite ? 'var(--gr-accent)' : 'none'} stroke="var(--gr-accent)" strokeWidth="1.8">
             <path d="M11.198 9C8.85 9 7 10.89 7 13.29c0 3.128 1.92 5.82 9 11.71 7.08-5.89 9-8.582 9-11.71C25 10.89 23.15 9 20.802 9c-2.098 0-3.237 1.273-4.126 2.327l-.676.8-.676-.8C14.434 10.31 13.296 9 11.197 9h0z" />
           </svg>
         </button>
@@ -672,7 +672,7 @@ function PlayerBar({
           className="flex items-center justify-center shrink-0 transition-colors bg-transparent hover:bg-[#494949]"
           style={{ width: 50, height: 50, cursor: 'pointer', border: 'none', padding: 0 }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
           </svg>
         </button>
@@ -722,7 +722,7 @@ function PlayerBar({
             }}
           >
             <div className="absolute" style={{ left: 0, right: 0, height: 2, borderRadius: 1, background: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }} />
-            <div className="absolute" style={{ left: 0, width: `${Math.round(volume * 100)}%`, height: 2, borderRadius: 1, background: '#00C864', pointerEvents: 'none' }} />
+            <div className="absolute" style={{ left: 0, width: `${Math.round(volume * 100)}%`, height: 2, borderRadius: 1, background: 'var(--gr-accent)', pointerEvents: 'none' }} />
             <div className="absolute rounded-full" style={{ left: `calc(${Math.round(volume * 100)}% - 5px)`, top: '50%', width: 10, height: 10, background: '#ffffff', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             <input
               type="range"
@@ -812,13 +812,13 @@ function MobileNowPlaying({
     >
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] truncate" style={{ color: '#00C864' }} dir="auto">
+          <div className="text-[14px] truncate" style={{ color: 'var(--gr-accent)' }} dir="auto">
             {currentStation.name}
           </div>
           <div className="text-[11px] text-white/50 truncate">
             {selectedCity?.city}, {selectedCity?.country}
-            {sonosActive && <span style={{ color: '#00C864', marginLeft: 4 }}>Playing on {sonosName}</span>}
-            {castActive && <span style={{ color: '#00C864', marginLeft: 4 }}>Playing on {castName}</span>}
+            {sonosActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 4 }}>Playing on {sonosName}</span>}
+            {castActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 4 }}>Playing on {castName}</span>}
             {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 4 }}>(Offline)</span>}
             {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
           </div>
@@ -835,7 +835,7 @@ function MobileNowPlaying({
           className="flex items-center justify-center shrink-0 rounded-full bg-transparent hover:bg-white/10 transition-colors"
           style={{ width: 32, height: 32, cursor: 'pointer', border: 'none' }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
           </svg>
         </button>
@@ -909,7 +909,7 @@ function MobileNowPlaying({
           }}
         >
           <div className="absolute" style={{ left: 0, right: 0, height: 2, borderRadius: 1, background: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }} />
-          <div className="absolute" style={{ left: 0, width: `${Math.round(volume * 100)}%`, height: 2, borderRadius: 1, background: '#00C864', pointerEvents: 'none' }} />
+          <div className="absolute" style={{ left: 0, width: `${Math.round(volume * 100)}%`, height: 2, borderRadius: 1, background: 'var(--gr-accent)', pointerEvents: 'none' }} />
           <div className="absolute rounded-full" style={{ left: `calc(${Math.round(volume * 100)}% - 5px)`, top: '50%', width: 10, height: 10, background: '#ffffff', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
             type="range"
@@ -994,7 +994,7 @@ function MobileDrawer({
                     className="flex items-center justify-center shrink-0 rounded-full"
                     style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)' }}
                   >
-                    <span className="text-[12px] font-bold" style={{ color: '#00C864' }}>{selectedCity.stationCount}</span>
+                    <span className="text-[12px] font-bold" style={{ color: 'var(--gr-accent)' }}>{selectedCity.stationCount}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h1 className="text-[20px] font-normal text-white leading-tight truncate">{selectedCity.city}</h1>
@@ -1002,7 +1002,7 @@ function MobileDrawer({
                       <h2 className="text-[13px] text-white/80">{selectedCity.country}</h2>
                       {localTime && <span className="text-[11px] text-white/40">{localTime}</span>}
                       {counts.cityCount > 0 && (
-                        <span className="text-[11px] font-medium" style={{ color: '#00C864' }}>
+                        <span className="text-[11px] font-medium" style={{ color: 'var(--gr-accent)' }}>
                           {counts.cityCount} listening
                         </span>
                       )}
@@ -1129,7 +1129,7 @@ function FavoriteHeart({
       className="flex items-center justify-center shrink-0 rounded-full bg-transparent hover:bg-white/10 transition-colors"
       style={{ width: size + 12, height: size + 12, cursor: 'pointer', border: 'none' }}
     >
-      <svg width={size} height={size} viewBox="0 0 32 32" fill={active ? '#00C864' : 'none'} stroke={active ? '#00C864' : 'rgba(255,255,255,0.55)'} strokeWidth="2">
+      <svg width={size} height={size} viewBox="0 0 32 32" fill={active ? 'var(--gr-accent)' : 'none'} stroke={active ? 'var(--gr-accent)' : 'rgba(255,255,255,0.55)'} strokeWidth="2">
         <path d="M10.4 7.5C7.66 7.5 5.5 9.63 5.5 12.33c0 3.52 2.24 6.55 10.5 13.17 8.26-6.63 10.5-9.66 10.5-13.17 0-2.7-2.16-4.83-4.9-4.83-2.45 0-3.78 1.43-4.81 2.62l-.79.9-.79-.9C14.17 8.97 12.85 7.5 10.4 7.5z" />
       </svg>
     </button>
@@ -1151,7 +1151,7 @@ function StationRow({
     <div
       className="w-full flex items-center gap-1 px-4 py-2 transition-colors"
       style={{
-        background: isCurrent ? 'rgba(0,200,100,0.15)' : 'transparent',
+        background: isCurrent ? 'rgba(var(--gr-accent-rgb),0.15)' : 'transparent',
         borderTop: '1px solid rgba(255,255,255,0.06)',
       }}
     >
@@ -1161,14 +1161,14 @@ function StationRow({
         style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
         aria-label={`Play ${station.name}`}
       >
-        <div className="text-[14px] truncate" style={{ color: isCurrent ? '#00C864' : 'white' }} dir="auto">
+        <div className="text-[14px] truncate" style={{ color: isCurrent ? 'var(--gr-accent)' : 'white' }} dir="auto">
           {station.name}
         </div>
       </button>
       {typeof count === 'number' && count > 0 && (
         <span
           className="flex items-center justify-center rounded-full text-[11px] font-bold shrink-0"
-          style={{ minWidth: 22, height: 20, padding: '0 7px', background: 'rgba(0,200,100,0.15)', color: '#00C864' }}
+          style={{ minWidth: 22, height: 20, padding: '0 7px', background: 'rgba(var(--gr-accent-rgb),0.15)', color: 'var(--gr-accent)' }}
           title={`${count} listening now`}
         >
           {count}
@@ -1193,13 +1193,13 @@ function ChatIconButton({ onClick, label, size = 13 }: { onClick: () => void; la
       style={{
         width: size + 12,
         height: size + 12,
-        background: 'rgba(0,200,100,0.12)',
-        border: '1px solid rgba(0,200,100,0.35)',
+        background: 'rgba(var(--gr-accent-rgb),0.12)',
+        border: '1px solid rgba(var(--gr-accent-rgb),0.35)',
         cursor: 'pointer',
         transition: 'background 0.15s',
       }}
     >
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#00C864" strokeWidth="2">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2">
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
       </svg>
     </button>

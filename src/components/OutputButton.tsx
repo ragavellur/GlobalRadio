@@ -12,7 +12,7 @@ import CastPanel from './CastPanel';
 
 type View = 'menu' | 'sonos' | 'cast';
 
-const STROKE = '#00C864';
+const STROKE = 'var(--gr-accent)';
 
 function Icon({ d, extra }: { d: string; extra?: ReactNode }) {
   return (

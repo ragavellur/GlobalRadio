@@ -33,11 +33,11 @@ function IntroPlayButton() {
         transform: 'translate(-50%, -50%)',
         width: 80,
         height: 80,
-        background: 'rgba(0, 200, 100, 0.25)',
+        background: 'rgba(var(--gr-accent-rgb), 0.25)',
         backdropFilter: 'blur(8px)',
-        border: '2px solid rgba(0, 200, 100, 0.4)',
+        border: '2px solid rgba(var(--gr-accent-rgb), 0.4)',
         cursor: 'pointer',
-        boxShadow: '0 0 30px rgba(0, 200, 100, 0.2)',
+        boxShadow: '0 0 30px rgba(var(--gr-accent-rgb), 0.2)',
       }}
       aria-label="Play radio from nearest city"
     >

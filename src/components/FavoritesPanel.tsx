@@ -7,6 +7,7 @@ import { countryName } from '../lib/countryNames';
 import { SUPABASE_ENABLED, type Favorite } from '../lib/supabase';
 import { GoogleG } from './SignInDialog';
 import InstallButton from './InstallButton';
+import ThemeButton from './ThemeButton';
 import LivePanel from './LivePanel';
 import SocialPanel from './SocialPanel';
 import NotificationsPanel from './NotificationsPanel';
@@ -54,6 +55,7 @@ function FavoritesPanelInner() {
     <>
       {/* Top-right buttons */}
       <div className={`absolute z-30 flex gap-2 top-14 sm:top-4 right-2 sm:right-4 ${hideOnMobile ? 'hidden sm:flex' : ''}`}>
+        <ThemeButton />
         <InstallButton />
         <button
           onClick={() => { setPanelOpen(true); setAccountOpen(false); }}
@@ -62,13 +64,13 @@ function FavoritesPanelInner() {
           className="relative flex items-center justify-center rounded-full"
           style={{ width: 40, height: 40, background: 'rgba(25,25,25,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
         >
-          <svg width="20" height="20" viewBox="0 0 32 32" fill={favorites.length > 0 ? '#00C864' : 'none'} stroke={favorites.length > 0 ? '#00C864' : 'white'} strokeWidth="2">
+          <svg width="20" height="20" viewBox="0 0 32 32" fill={favorites.length > 0 ? 'var(--gr-accent)' : 'none'} stroke={favorites.length > 0 ? 'var(--gr-accent)' : 'white'} strokeWidth="2">
             <path d="M10.4 7.5C7.66 7.5 5.5 9.63 5.5 12.33c0 3.52 2.24 6.55 10.5 13.17 8.26-6.63 10.5-9.66 10.5-13.17 0-2.7-2.16-4.83-4.9-4.83-2.45 0-3.78 1.43-4.81 2.62l-.79.9-.79-.9C14.17 8.97 12.85 7.5 10.4 7.5z" />
           </svg>
           {favorites.length > 0 && (
             <span
               className="flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, padding: '0 4px', background: '#00C864' }}
+              style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, padding: '0 4px', background: 'var(--gr-accent)' }}
             >
               {favorites.length}
             </span>
@@ -88,7 +90,7 @@ function FavoritesPanelInner() {
             style={{ width: 40, height: 40, background: 'rgba(25,25,25,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
           >
             {user ? (
-              <span className="text-[14px] font-bold" style={{ color: '#00C864' }}>
+              <span className="text-[14px] font-bold" style={{ color: 'var(--gr-accent)' }}>
                 {(user.email || user.user_metadata?.name || '?').toString()[0].toUpperCase()}
               </span>
             ) : (
