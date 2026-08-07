@@ -1,13 +1,18 @@
 // Google Cast (Chromecast / Google Home) sender integration.
 //
-// Loads the Cast Web Sender SDK on demand and streams a live radio station to
-// a Cast-enabled device using the Default Media Receiver, so no receiver
-// registration or API key is required. Once casting starts, the device pulls
-// the stream itself and playback continues even if this tab is closed.
+// - In the browser it loads the Cast Web Sender SDK on demand and streams a
+//   live radio station to a Cast-enabled device using the Default Media
+//   Receiver, so no receiver registration or API key is required.
+// - In the native app the Cast Web Sender SDK is disabled by Google inside
+//   WebView, so it uses the Android Cast SDK through the
+//   @strasberry/capacitor-chromecast plugin, which gives real device
+//   discovery and the system Cast device picker.
 
 /// <reference types="chromecast-caf-sender" />
 
+import { Capacitor } from '@capacitor/core';
 import type { Station } from '../types';
+import type { SessionObject } from '@strasberry/capacitor-chromecast';
 
 const CAST_SDK_URL =
   'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
@@ -23,9 +28,14 @@ export interface CastStateInfo {
 
 type CastListener = (state: CastStateInfo) => void;
 
-let sdkPromise: Promise<void> | null = null;
-let initialized = false;
+type NativeChromecast = typeof import('@strasberry/capacitor-chromecast');
+
+const isNative = Capacitor.isNativePlatform();
 const listeners = new Set<CastListener>();
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
 
 const CODEC_MIME: Record<string, string> = {
   MP3: 'audio/mpeg',
@@ -45,6 +55,127 @@ function contentTypeFor(codec?: string): string {
   if (!codec) return 'audio/mpeg';
   return CODEC_MIME[codec.trim().toUpperCase()] ?? 'audio/mpeg';
 }
+
+function notify(): void {
+  const state = currentState();
+  listeners.forEach((l) => l(state));
+}
+
+// ---------------------------------------------------------------------------
+// Native (Android Cast SDK) implementation
+// ---------------------------------------------------------------------------
+
+let nativePlugin: NativeChromecast | null = null;
+let nativeReady: Promise<void> | null = null;
+let nativeDeviceName: string | null = null;
+let nativeConnected = false;
+
+async function loadNativePlugin(): Promise<NativeChromecast> {
+  if (!nativePlugin) {
+    nativePlugin = await import('@strasberry/capacitor-chromecast');
+  }
+  return nativePlugin;
+}
+
+function handleNativeSession(session: unknown): void {
+  const name = (session as SessionObject | undefined)?.receiver?.friendlyName;
+  if (name) nativeDeviceName = name;
+  nativeConnected = true;
+  notify();
+}
+
+function handleNativeEnd(): void {
+  nativeConnected = false;
+  nativeDeviceName = null;
+  notify();
+}
+
+function ensureNative(): Promise<void> {
+  if (nativeReady) return nativeReady;
+  nativeReady = (async () => {
+    const { Chromecast } = await loadNativePlugin();
+    await Chromecast.initialize({
+      appId: DEFAULT_MEDIA_RECEIVER_APP_ID,
+      autoJoinPolicy: 'tab_and_origin_scoped',
+      defaultActionPolicy: 'create_session',
+    });
+    Chromecast.addListener('SESSION_STARTED', (...args: unknown[]) => handleNativeSession(args[0]));
+    Chromecast.addListener('SESSION_RESUMED', (...args: unknown[]) => handleNativeSession(args[0]));
+    Chromecast.addListener('SESSION_LISTENER', (...args: unknown[]) => handleNativeSession(args[0]));
+    Chromecast.addListener('SESSION_UPDATE', (...args: unknown[]) => handleNativeSession(args[0]));
+    Chromecast.addListener('SESSION_ENDED', () => handleNativeEnd());
+    Chromecast.addListener('SESSION_START_FAILED', () => notify());
+  })();
+  return nativeReady;
+}
+
+function nativeStateInfo(): CastStateInfo {
+  return {
+    available: true,
+    connected: nativeConnected,
+    devicesAvailable: true,
+    deviceName: nativeDeviceName,
+  };
+}
+
+async function castStationNative(station: Station): Promise<{ deviceName: string }> {
+  const { Chromecast } = await loadNativePlugin();
+  await ensureNative();
+  const session = await Chromecast.requestSession();
+  await Chromecast.loadMedia({
+    contentId: station.url,
+    contentType: contentTypeFor(station.codec),
+    streamType: 'live',
+    autoPlay: true,
+    metadata: { title: station.name },
+  });
+  handleNativeSession(session);
+  return { deviceName: nativeDeviceName ?? session.receiver.friendlyName ?? 'Cast device' };
+}
+
+async function pauseCastNative(): Promise<void> {
+  const { Chromecast } = await loadNativePlugin();
+  await Chromecast.mediaPause();
+}
+
+async function resumeCastNative(): Promise<void> {
+  const { Chromecast } = await loadNativePlugin();
+  await Chromecast.mediaPlay();
+}
+
+async function stopCastMediaNative(): Promise<void> {
+  const { Chromecast } = await loadNativePlugin();
+  await Chromecast.sessionStop();
+}
+
+function stopCastNative(): void {
+  void (async () => {
+    try {
+      await stopCastMediaNative();
+    } catch {
+      // no active session to stop
+    }
+    handleNativeEnd();
+  })();
+}
+
+function subscribeCastNative(listener: CastListener): () => void {
+  listeners.add(listener);
+  listener(nativeStateInfo());
+  ensureNative()
+    .then(notify)
+    .catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : 'Google Cast is unavailable';
+      listeners.forEach((l) => l({ ...nativeStateInfo(), available: false, error: msg }));
+    });
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Web (Cast Web Sender SDK) implementation
+// ---------------------------------------------------------------------------
 
 function sdkLoaded(): boolean {
   return typeof window !== 'undefined' && typeof window.cast?.framework !== 'undefined';
@@ -78,11 +209,14 @@ function loadCastSdk(): Promise<void> {
   return sdkPromise;
 }
 
-function context() {
+let sdkPromise: Promise<void> | null = null;
+let webInitialized = false;
+
+function webContext() {
   return window.cast.framework.CastContext.getInstance();
 }
 
-function currentState(): CastStateInfo {
+function webCurrentState(): CastStateInfo {
   const info: CastStateInfo = {
     available: false,
     connected: false,
@@ -92,7 +226,7 @@ function currentState(): CastStateInfo {
   try {
     if (!sdkLoaded()) return info;
     info.available = true;
-    const ctx = context();
+    const ctx = webContext();
     const state = ctx.getCastState();
     info.connected = state === window.cast.framework.CastState.CONNECTED;
     info.devicesAvailable = state !== window.cast.framework.CastState.NO_DEVICES_AVAILABLE;
@@ -104,15 +238,14 @@ function currentState(): CastStateInfo {
   return info;
 }
 
-function notify(): void {
-  const state = currentState();
-  listeners.forEach((l) => l(state));
+function currentState(): CastStateInfo {
+  return isNative ? nativeStateInfo() : webCurrentState();
 }
 
 function initCast(): void {
-  if (initialized) return;
-  initialized = true;
-  const ctx = context();
+  if (webInitialized) return;
+  webInitialized = true;
+  const ctx = webContext();
   ctx.setOptions({
     receiverApplicationId: DEFAULT_MEDIA_RECEIVER_APP_ID,
     autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
@@ -122,14 +255,10 @@ function initCast(): void {
   notify();
 }
 
-export async function ensureCastReady(): Promise<void> {
+async function castStationWeb(station: Station): Promise<{ deviceName: string }> {
   await loadCastSdk();
   initCast();
-}
-
-export async function castStation(station: Station): Promise<{ deviceName: string }> {
-  await ensureCastReady();
-  const ctx = context();
+  const ctx = webContext();
   let session = ctx.getCurrentSession();
   if (!session) {
     await ctx.requestSession();
@@ -146,20 +275,8 @@ export async function castStation(station: Station): Promise<{ deviceName: strin
   return { deviceName: session.getCastDevice().friendlyName };
 }
 
-export function pauseCast(): Promise<void> {
-  return mediaOp('pause');
-}
-
-export function resumeCast(): Promise<void> {
-  return mediaOp('play');
-}
-
-export function stopCastMedia(): Promise<void> {
-  return mediaOp('stop');
-}
-
 function mediaOp(op: 'play' | 'pause' | 'stop'): Promise<void> {
-  const session = sdkLoaded() ? context().getCurrentSession() : null;
+  const session = sdkLoaded() ? webContext().getCurrentSession() : null;
   const media = session ? session.getMediaSession() : null;
   if (!media) return Promise.reject(new Error('No active cast media session'));
   return new Promise<void>((resolve, reject) => {
@@ -175,27 +292,60 @@ function mediaOp(op: 'play' | 'pause' | 'stop'): Promise<void> {
   });
 }
 
-export function stopCast(): void {
+function webStopCast(): void {
   if (!sdkLoaded()) return;
   try {
-    context().endCurrentSession(true);
+    webContext().endCurrentSession(true);
   } catch {
     // ignore
   }
   notify();
 }
 
-export function subscribeCast(listener: CastListener): () => void {
+function webSubscribeCast(listener: CastListener): () => void {
   listeners.add(listener);
-  listener(currentState());
-  ensureCastReady()
+  listener(webCurrentState());
+  loadCastSdk()
+    .then(() => initCast())
     .then(() => notify())
     .catch((e: unknown) => {
       listeners.forEach((l) =>
-        l({ ...currentState(), error: e instanceof Error ? e.message : 'Google Cast is unavailable' })
+        l({
+          ...webCurrentState(),
+          error: e instanceof Error ? e.message : 'Google Cast is unavailable',
+        })
       );
     });
   return () => {
     listeners.delete(listener);
   };
+}
+
+// ---------------------------------------------------------------------------
+// Public API (dispatches to native or web implementation)
+// ---------------------------------------------------------------------------
+
+export function subscribeCast(listener: CastListener): () => void {
+  return isNative ? subscribeCastNative(listener) : webSubscribeCast(listener);
+}
+
+export async function castStation(station: Station): Promise<{ deviceName: string }> {
+  return isNative ? castStationNative(station) : castStationWeb(station);
+}
+
+export function pauseCast(): Promise<void> {
+  return isNative ? pauseCastNative() : mediaOp('pause');
+}
+
+export function resumeCast(): Promise<void> {
+  return isNative ? resumeCastNative() : mediaOp('play');
+}
+
+export function stopCastMedia(): Promise<void> {
+  return isNative ? stopCastMediaNative() : mediaOp('stop');
+}
+
+export function stopCast(): void {
+  if (isNative) stopCastNative();
+  else webStopCast();
 }

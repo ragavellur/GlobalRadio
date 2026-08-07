@@ -11,6 +11,11 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     cleartext: true,
   },
+  plugins: {
+    Chromecast: {
+      appId: 'CC1AD845',
+    },
+  },
 };
 
 export default config;
