@@ -213,7 +213,7 @@ export default function BottomPanel() {
       {/* === Desktop panel (left side, 325px) === */}
       <div
         className="absolute z-10 flex-col hidden sm:flex"
-        style={{ top: 15, left: 15, width: 325, height: 'calc(100vh - 30px)' }}
+        style={{ top: 15, left: 15, width: 325, height: 'calc(var(--app-vh) - 30px)' }}
       >
         <DrawerContent
           selectedCity={selectedCity}
