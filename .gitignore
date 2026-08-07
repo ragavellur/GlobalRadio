@@ -146,3 +146,7 @@ vite.config.ts.timestamp-*
 !public/icon-*.png
 !public/favicon.png
 .DS_Store
+
+# Android release signing (never commit)
+android/app/keystore.properties
+android/app/*.keystore
