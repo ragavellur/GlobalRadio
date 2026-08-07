@@ -1,3 +1,5 @@
+import type { MapStyle } from '../types';
+
 export interface Theme {
   id: string;
   name: string;
@@ -8,6 +10,9 @@ export interface Theme {
 export const THEME_KEY = 'globalradio:theme';
 export const DEFAULT_THEME_ID = 'blue';
 
+export const MAP_STYLE_KEY = 'globalradio:mapStyle';
+export const DEFAULT_MAP_STYLE: MapStyle = 'satellite';
+
 export const THEMES: Theme[] = [
   { id: 'green', name: 'Neon Green', accent: '#00C864', rgb: '0, 200, 100' },
   { id: 'yellow', name: 'Neon Yellow', accent: '#FFEA00', rgb: '255, 234, 0' },
@@ -16,6 +21,7 @@ export const THEMES: Theme[] = [
   { id: 'purple', name: 'Neon Purple', accent: '#C13BFF', rgb: '193, 59, 255' },
   { id: 'red', name: 'Neon Red', accent: '#FF3B30', rgb: '255, 59, 48' },
   { id: 'orange', name: 'Neon Orange', accent: '#FF9500', rgb: '255, 149, 0' },
+  { id: 'gray', name: 'Monochrome', accent: '#E6E6E6', rgb: '230, 230, 230' },
 ];
 
 export function getTheme(id: string): Theme | null {
@@ -30,8 +36,17 @@ export function loadThemeId(): string {
   return DEFAULT_THEME_ID;
 }
 
+export function loadMapStyle(): MapStyle {
+  try {
+    const saved = localStorage.getItem(MAP_STYLE_KEY);
+    if (saved === 'satellite' || saved === 'outline') return saved;
+  } catch {}
+  return DEFAULT_MAP_STYLE;
+}
+
 export function applyThemeVars(theme: Theme): void {
   const root = document.documentElement;
   root.style.setProperty('--gr-accent', theme.accent);
   root.style.setProperty('--gr-accent-rgb', theme.rgb);
+  root.setAttribute('data-theme', theme.id);
 }

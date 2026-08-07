@@ -649,8 +649,8 @@ function PlayerBar({
             {selectedCity?.city}, {countryName(selectedCity?.country ?? '')}
             {sonosActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 6 }}>· {sonosName}</span>}
             {castActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 6 }}>· {castName}</span>}
-            {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 6 }}>(Offline)</span>}
-            {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 6 }}>(Loading...)</span>}
+            {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: 'var(--gr-danger)', marginLeft: 6 }}>(Offline)</span>}
+            {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: 'var(--gr-warning)', marginLeft: 6 }}>(Loading...)</span>}
           </div>
         </div>
         <OutputButton size={22} station={currentStation} city={selectedCity} />
@@ -819,8 +819,8 @@ function MobileNowPlaying({
             {selectedCity?.city}, {selectedCity?.country}
             {sonosActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 4 }}>Playing on {sonosName}</span>}
             {castActive && <span style={{ color: 'var(--gr-accent)', marginLeft: 4 }}>Playing on {castName}</span>}
-            {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: '#ff5555', marginLeft: 4 }}>(Offline)</span>}
-            {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: '#ffaa00', marginLeft: 4 }}>(Loading...)</span>}
+            {!sonosActive && !castActive && audioStatus === 'offline' && <span style={{ color: 'var(--gr-danger)', marginLeft: 4 }}>(Offline)</span>}
+            {!sonosActive && !castActive && audioStatus === 'loading' && isPlaying && <span style={{ color: 'var(--gr-warning)', marginLeft: 4 }}>(Loading...)</span>}
           </div>
         </div>
         <FavoriteHeart

@@ -53,11 +53,6 @@ export function addDotLayer(map: MaplibreMap, cities: City[], accent: string) {
   });
 }
 
-export function setDotColor(map: MaplibreMap, accent: string) {
-  if (!map.getLayer(LAYER_ID)) return;
-  map.setPaintProperty(LAYER_ID, 'circle-color', accent);
-}
-
 export function highlightCity(map: MaplibreMap, cityId: number | null) {
   if (!map.getLayer(LAYER_ID)) return;
 

@@ -59,7 +59,7 @@ function LivePanelInner() {
 
   return (
     <>
-      <style>{`@keyframes grPulse{0%{box-shadow:0 0 0 0 rgba(255,59,48,.5)}70%{box-shadow:0 0 0 6px rgba(255,59,48,0)}100%{box-shadow:0 0 0 0 rgba(255,59,48,0)}}`}</style>
+      <style>{`@keyframes grPulse{0%{box-shadow:0 0 0 0 rgba(var(--gr-live-rgb),.5)}70%{box-shadow:0 0 0 6px rgba(var(--gr-live-rgb),0)}100%{box-shadow:0 0 0 0 rgba(var(--gr-live-rgb),0)}}`}</style>
       {/* Live button */}
       <button
         onClick={() => setOpen((v) => !v)}
@@ -78,11 +78,11 @@ function LivePanelInner() {
         <span className="relative flex items-center">
           <span
             className="absolute -left-2 rounded-full"
-            style={{ width: 8, height: 8, background: '#ff3b30', boxShadow: '0 0 0 0 rgba(255,59,48,0.6)', animation: 'grPulse 1.5s infinite' }}
+            style={{ width: 8, height: 8, background: 'var(--gr-live)', boxShadow: '0 0 0 0 rgba(var(--gr-live-rgb),0.6)', animation: 'grPulse 1.5s infinite' }}
           />
           <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
             <path d="M12 2a10 10 0 0 0-6.32 17.78l1.5-1.5A8 8 0 1 1 12 4a8 8 0 0 1 5.66 2.34l1.5-1.5A10 10 0 0 0 12 2zm0 4a6 6 0 0 0-3.8 10.67l1.5-1.5A4 4 0 1 1 12 8a4 4 0 0 1 2.83 1.17l1.5-1.5A6 6 0 0 0 12 6z" />
-            <circle cx="12" cy="12" r="2" fill="#ff3b30" />
+            <circle cx="12" cy="12" r="2" fill="var(--gr-live)" />
           </svg>
         </span>
       </button>

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
-import type { City, Station, SocialRoom, RadioState, SonosSession, CastSession } from '../types';
-import { loadThemeId, getTheme, applyThemeVars, THEME_KEY, DEFAULT_THEME_ID } from './themes';
+import type { City, Station, SocialRoom, RadioState, SonosSession, CastSession, MapStyle } from '../types';
+import { loadThemeId, getTheme, applyThemeVars, loadMapStyle, THEME_KEY, DEFAULT_THEME_ID, MAP_STYLE_KEY } from './themes';
 
 interface RadioStore extends RadioState {
   setCities: (cities: City[]) => void;
@@ -23,6 +23,7 @@ interface RadioStore extends RadioState {
   setCastSession: (session: CastSession | null) => void;
   setStationSilent: (station: Station) => void;
   setTheme: (themeId: string) => void;
+  setMapStyle: (mapStyle: MapStyle) => void;
 }
 
 const RadioContext = createContext<RadioStore | null>(null);
@@ -36,6 +37,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     isPlaying: false,
     audioVolume: 0.8,
     themeId: loadThemeId(),
+    mapStyle: loadMapStyle(),
     searchQuery: '',
     searchResults: [],
     sidebarOpen: false,
@@ -128,13 +130,18 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, themeId }));
   }, []);
 
+  const setMapStyle = useCallback((mapStyle: MapStyle) => {
+    setState((prev) => ({ ...prev, mapStyle }));
+  }, []);
+
   useEffect(() => {
     const theme = getTheme(state.themeId) ?? getTheme(DEFAULT_THEME_ID)!;
     applyThemeVars(theme);
     try {
       localStorage.setItem(THEME_KEY, state.themeId);
+      localStorage.setItem(MAP_STYLE_KEY, state.mapStyle);
     } catch {}
-  }, [state.themeId]);
+  }, [state.themeId, state.mapStyle]);
 
   return (
     <RadioContext.Provider
@@ -160,6 +167,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         setCastSession,
         setStationSilent,
         setTheme,
+        setMapStyle,
       }}
     >
       {children}

@@ -251,7 +251,7 @@ export default function OutputButton({
                   </div>
 
                   {menuError && (
-                    <div className="text-[12px] mb-2" style={{ color: '#ff5555' }}>{menuError}</div>
+                    <div className="text-[12px] mb-2" style={{ color: 'var(--gr-danger)' }}>{menuError}</div>
                   )}
 
                   {SONOS_ENABLED && (

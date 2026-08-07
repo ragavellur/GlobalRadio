@@ -3,11 +3,27 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useRadioStore } from '../lib/store';
 import { buildSpatialIndex, findNearestCityFromPoint, findNearestCity } from '../lib/spatialIndex';
-import { addDotLayer, highlightCity, setDotColor } from '../lib/dotRenderer';
+import { addDotLayer, highlightCity } from '../lib/dotRenderer';
 import { initSearch } from '../lib/search';
 import { transformCities } from '../lib/transform';
 import { getTheme } from '../lib/themes';
-import type { City } from '../types';
+import type { City, MapStyle } from '../types';
+
+function applyMapTheme(m: maplibregl.Map, themeId: string, mapStyle: MapStyle) {
+  if (!m.getLayer('satellite-layer')) return;
+  const theme = getTheme(themeId);
+  const accent = theme?.accent ?? '#00C864';
+  const outline = themeId === 'gray' || mapStyle === 'outline';
+  m.setLayoutProperty('satellite-layer', 'visibility', outline ? 'none' : 'visible');
+  if (m.getLayer('country-borders')) {
+    m.setLayoutProperty('country-borders', 'visibility', outline ? 'visible' : 'none');
+    m.setPaintProperty('country-borders', 'line-color', themeId === 'gray' ? '#ffffff' : accent);
+  }
+  if (m.getLayer('radio-dots')) {
+    m.setPaintProperty('radio-dots', 'circle-color', outline ? (themeId === 'gray' ? '#E8E8E8' : accent) : accent);
+    m.setPaintProperty('radio-dots', 'circle-stroke-color', outline ? 'rgba(0,0,0,0)' : '#ffffff');
+  }
+}
 
 export default function Globe() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -15,14 +31,18 @@ export default function Globe() {
   const citiesRef = useRef<City[]>([]);
   const rotationRef = useRef<number | null>(null);
   const rotationActiveRef = useRef(false);
-  const { setCities, setIndexLoaded, selectCity, themeId } = useRadioStore();
+  const { setCities, setIndexLoaded, selectCity, themeId, mapStyle } = useRadioStore();
+  const themeIdRef = useRef(themeId);
+  const mapStyleRef = useRef(mapStyle);
   const accentRef = useRef(getTheme(themeId)?.accent ?? '#00C864');
 
   useEffect(() => {
+    themeIdRef.current = themeId;
+    mapStyleRef.current = mapStyle;
     accentRef.current = getTheme(themeId)?.accent ?? '#00C864';
     const m = mapRef.current;
-    if (m) setDotColor(m, accentRef.current);
-  }, [themeId]);
+    if (m) applyMapTheme(m, themeId, mapStyle);
+  }, [themeId, mapStyle]);
 
   const handleCityClick = useCallback((city: City) => {
     if (!city || !mapRef.current) return;
@@ -78,6 +98,11 @@ export default function Globe() {
         },
         layers: [
           {
+            id: 'bg',
+            type: 'background',
+            paint: { 'background-color': '#000000' },
+          },
+          {
             id: 'satellite-layer',
             type: 'raster',
             source: 'satellite',
@@ -108,6 +133,7 @@ export default function Globe() {
 
     m.on('load', () => {
       try { m.setProjection({ type: 'globe' }); } catch {}
+      applyMapTheme(m, themeIdRef.current, mapStyleRef.current);
 
       rotationActiveRef.current = true;
         const rotate = () => {
@@ -194,10 +220,39 @@ export default function Globe() {
       initSearch(data);
       setIndexLoaded(true);
 
-      if (m.loaded()) {
+      const addBorders = async () => {
+        try {
+          const bordersRes = await fetch('/data/country_borders.geojson');
+          if (bordersRes.ok && !m.getSource('countries')) {
+            const geojson = await bordersRes.json();
+            if (!m.getSource('countries')) {
+              m.addSource('countries', { type: 'geojson', data: geojson });
+              m.addLayer({
+                id: 'country-borders',
+                type: 'line',
+                source: 'countries',
+                layout: { visibility: 'none' },
+                paint: { 'line-color': '#ffffff', 'line-width': 1 },
+              });
+            }
+          }
+        } catch {
+          console.warn('Country borders unavailable');
+        }
+      };
+
+      const finish = async () => {
+        await addBorders();
         addDotLayer(m, data, accentRef.current);
+        applyMapTheme(m, themeIdRef.current, mapStyleRef.current);
+      };
+
+      if (m.loaded()) {
+        void finish();
       } else {
-        m.once('load', () => addDotLayer(m, data, accentRef.current));
+        m.once('load', () => {
+          void finish();
+        });
       }
     } catch (err) {
       console.error('Failed to load city index:', err);

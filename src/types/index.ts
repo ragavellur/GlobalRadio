@@ -58,6 +58,8 @@ export interface CastSession {
   startedAt: number;
 }
 
+export type MapStyle = 'satellite' | 'outline';
+
 export interface RadioState {
   cities: City[];
   indexLoaded: boolean;
@@ -66,6 +68,7 @@ export interface RadioState {
   isPlaying: boolean;
   audioVolume: number;
   themeId: string;
+  mapStyle: MapStyle;
   searchQuery: string;
   searchResults: City[];
   sidebarOpen: boolean;

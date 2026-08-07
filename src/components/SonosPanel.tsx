@@ -114,7 +114,7 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
       <PanelHeader title="Sonos Stream" onBack={onBack} />
 
       {error && (
-        <div className="text-[12px] mb-2" style={{ color: '#ff5555' }}>{error}</div>
+        <div className="text-[12px] mb-2" style={{ color: 'var(--gr-danger)' }}>{error}</div>
       )}
 
       {!connected && (
@@ -186,7 +186,7 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
           <button
             onClick={() => void handleStop()}
             className="text-[12px] font-medium rounded-full px-3 py-1"
-            style={{ background: 'rgba(255,85,85,0.15)', color: '#ff5555', border: '1px solid rgba(255,85,85,0.4)', cursor: 'pointer' }}
+            style={{ background: 'rgba(var(--gr-danger-rgb),0.15)', color: 'var(--gr-danger)', border: '1px solid rgba(var(--gr-danger-rgb),0.4)', cursor: 'pointer' }}
           >
             Stop on Sonos
           </button>

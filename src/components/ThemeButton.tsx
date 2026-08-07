@@ -3,9 +3,10 @@ import { THEMES } from '../lib/themes';
 import { useRadioStore } from '../lib/store';
 
 export default function ThemeButton() {
-  const { themeId, setTheme } = useRadioStore();
+  const { themeId, setTheme, mapStyle, setMapStyle } = useRadioStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const effectiveMapStyle = themeId === 'gray' ? 'outline' : mapStyle;
 
   useEffect(() => {
     if (!open) return;
@@ -71,6 +72,27 @@ export default function ThemeButton() {
                         <path d="M5 12l5 5 9-11" />
                       </svg>
                     )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-[12px] font-semibold text-white/70 mt-3 mb-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 12 }}>Map</div>
+            <div className="flex gap-1.5" style={{ width: 140 }}>
+              {(['satellite', 'outline'] as const).map((s) => {
+                const selected = effectiveMapStyle === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setMapStyle(s)}
+                    className="flex-1 rounded-full py-1 text-[11px] font-medium transition-colors"
+                    style={{
+                      cursor: 'pointer',
+                      background: selected ? 'rgba(var(--gr-accent-rgb), 0.2)' : 'rgba(255,255,255,0.06)',
+                      color: selected ? 'var(--gr-accent)' : 'rgba(255,255,255,0.6)',
+                      border: 'none',
+                    }}
+                  >
+                    {s === 'satellite' ? 'Satellite' : 'Outline'}
                   </button>
                 );
               })}

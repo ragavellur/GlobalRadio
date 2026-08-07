@@ -21,6 +21,25 @@ html, body, #root {
   --app-vh: 100vh;
   --gr-accent: #00C2FF;
   --gr-accent-rgb: 0, 194, 255;
+  --gr-live: #ff3b30;
+  --gr-live-rgb: 255, 59, 48;
+  --gr-danger: #ff5555;
+  --gr-danger-rgb: 255, 85, 85;
+  --gr-warning: #ffaa00;
+}
+
+html[data-theme='gray'] {
+  --gr-accent: #e6e6e6;
+  --gr-accent-rgb: 230, 230, 230;
+  --gr-live: #9a9a9a;
+  --gr-live-rgb: 154, 154, 154;
+  --gr-danger: #b3b3b3;
+  --gr-danger-rgb: 179, 179, 179;
+  --gr-warning: #b3b3b3;
+}
+
+html[data-theme='gray'] .grx-chat-root {
+  filter: grayscale(1);
 }
 
 @supports (height: 100svh) {

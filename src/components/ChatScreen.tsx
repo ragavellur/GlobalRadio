@@ -424,7 +424,7 @@ export default function ChatScreen({
 
   return (
     <div
-      className="fixed z-50 flex flex-col"
+      className="grx-chat-root fixed z-50 flex flex-col"
       style={{
         background: 'var(--gr-chat-bg)',
         top: vv.top,
