@@ -1,6 +1,6 @@
 {
   "name": "global-radio-explorer",
-  "version": "1.0.0",
+  "version": "1.34.0",
   "description": "Interactive 3D globe showing radio stations with direct audio playback",
   "type": "module",
   "scripts": {
