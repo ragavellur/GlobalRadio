@@ -9,7 +9,6 @@ import { useSignInDialog } from './SignInDialog';
 import type { Station, City } from '../types';
 import { useListenerCounts } from '../hooks/useListenerCounts';
 import { cityRoomId, stationRoomId, cityKeyOf } from '../lib/social';
-import { stopCast } from '../lib/cast';
 import { registerAudio } from '../lib/airplay';
 import OutputButton from './OutputButton';
 import { stationShareUrl } from '../lib/router';
@@ -20,7 +19,7 @@ export default function BottomPanel() {
   const {
     selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession, castSession, drawerOpen,
     audioVolume, setVolume,
-    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setCastSession, openSocialRoom, setDrawerOpen,
+    playStation, pausePlayback, setPendingStationUrl, setStationSilent, openSocialRoom, setDrawerOpen,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -28,7 +27,6 @@ export default function BottomPanel() {
   const [audioStatus, setAudioStatus] = useState<'idle' | 'loading' | 'playing' | 'offline'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sonosSessionRef = useRef(sonosSession);
-  const castSessionRef = useRef(castSession);
   const volumeRef = useRef(audioVolume);
   const counts = useListenerCounts(selectedCity, !!selectedCity);
 
@@ -39,10 +37,6 @@ export default function BottomPanel() {
   useEffect(() => {
     sonosSessionRef.current = sonosSession;
   }, [sonosSession]);
-
-  useEffect(() => {
-    castSessionRef.current = castSession;
-  }, [castSession]);
 
   useEffect(() => {
     if (selectedCity) {
@@ -113,27 +107,19 @@ export default function BottomPanel() {
     }
   }, []);
 
-  const stopCastIfActive = useCallback(() => {
-    if (!castSessionRef.current) return;
-    stopCast();
-    setCastSession(null);
-  }, [setCastSession]);
-
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
       pausePlayback();
     } else if (currentStation) {
-      stopCastIfActive();
       playStation(currentStation);
     }
-  }, [isPlaying, currentStation, pausePlayback, playStation, stopCastIfActive]);
+  }, [isPlaying, currentStation, pausePlayback, playStation]);
 
   const handlePlayStation = useCallback(
     (station: Station) => {
-      stopCastIfActive();
       playStation(station);
     },
-    [playStation, stopCastIfActive]
+    [playStation]
   );
 
   useEffect(() => {
@@ -188,10 +174,9 @@ export default function BottomPanel() {
 
   const handleShareStation = useCallback(async (station: Station) => {
     const url = stationShareUrl({
-      n: station.name,
-      u: station.url,
-      c: selectedCity?.city ?? '',
-      y: selectedCity?.country ?? '',
+      name: station.name,
+      city: selectedCity?.city ?? '',
+      countryCode: selectedCity?.country ?? '',
     });
     const title = `${station.name} — Global Radio`;
     try {

@@ -5,6 +5,7 @@ export interface Route {
     cityId?: string;
     stationSlug?: string;
     stationId?: string;
+    countryCode?: string;
   };
 }
 
@@ -30,12 +31,26 @@ export function parseRoute(hash: string): Route {
       return { type: 'home' };
 
     case 'listen':
-      if (segments.length >= 3) {
+      // Legacy share links embed an encoded JSON payload:
+      //   /listen/<stationSlug>/<encoded payload>
+      if (segments.length === 3 && isSharePayload(segments[2])) {
         return {
           type: 'listen',
           params: {
             stationSlug: segments[1],
             stationId: segments[2],
+          },
+        };
+      }
+      // Current share links:
+      //   /listen/<countryCode>/<citySlug>/<stationSlug>
+      if (segments.length >= 4) {
+        return {
+          type: 'listen',
+          params: {
+            countryCode: segments[1],
+            citySlug: segments[2],
+            stationSlug: segments[3],
           },
         };
       }
@@ -68,7 +83,9 @@ export function setRoute(route: Route): string {
       }
       break;
     case 'listen':
-      if (route.params?.stationSlug && route.params?.stationId) {
+      if (route.params?.countryCode && route.params?.citySlug && route.params?.stationSlug) {
+        hash = `/listen/${route.params.countryCode}/${route.params.citySlug}/${route.params.stationSlug}`;
+      } else if (route.params?.stationSlug && route.params?.stationId) {
         hash = `/listen/${route.params.stationSlug}/${route.params.stationId}`;
       }
       break;
@@ -102,10 +119,6 @@ export interface StationSharePayload {
   y: string;
 }
 
-export function encodeStationPayload(payload: StationSharePayload): string {
-  return encodeURIComponent(JSON.stringify(payload));
-}
-
 export function decodeStationPayload(stationId: string): StationSharePayload | null {
   try {
     const parsed = JSON.parse(decodeURIComponent(stationId)) as Partial<StationSharePayload>;
@@ -118,7 +131,19 @@ export function decodeStationPayload(stationId: string): StationSharePayload | n
   return null;
 }
 
-export function stationShareUrl(payload: StationSharePayload): string {
-  const slug = slugify(payload.n) || 'station';
-  return `https://radio.vellur.in/#/listen/${slug}/${encodeStationPayload(payload)}`;
+function isSharePayload(segment: string): boolean {
+  return segment.startsWith('%7B') || segment.startsWith('{');
+}
+
+export interface StationShareRef {
+  name: string;
+  city: string;
+  countryCode: string;
+}
+
+export function stationShareUrl(ref: StationShareRef): string {
+  const cc = ref.countryCode.trim().toUpperCase();
+  const citySlug = slugify(ref.city) || 'city';
+  const stationSlug = slugify(ref.name) || 'station';
+  return `https://radio.vellur.in/#/listen/${cc}/${citySlug}/${stationSlug}`;
 }
