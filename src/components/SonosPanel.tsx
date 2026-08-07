@@ -8,6 +8,7 @@ import {
   playStream,
   pauseGroup,
   isConnected,
+  isStreamingPlayback,
   setActiveSonos,
   getActiveSonos,
   clearActiveSonos,
@@ -92,14 +93,16 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
     setError(null);
     try {
       const active = getActiveSonos();
-      if (active?.id) await pauseGroup(active.id);
+      const streaming = groups.find((g) => isStreamingPlayback(g.playbackState));
+      const target = active?.id ?? streaming?.id;
+      if (target) await pauseGroup(target);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to stop Sonos');
     }
     clearActiveSonos();
     setSonosSession(null);
     onClose();
-  }, [setSonosSession, onClose]);
+  }, [groups, setSonosSession, onClose]);
 
   const handleDisconnect = useCallback(() => {
     disconnect();
@@ -112,6 +115,8 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
   if (!SONOS_ENABLED) return null;
 
   const activeName = sonosSession?.name ?? null;
+  const activeStationName = sonosSession?.stationName ?? null;
+  const streamingGroup = groups.find((g) => isStreamingPlayback(g.playbackState));
 
   return (
     <>
@@ -145,30 +150,41 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
           {!loadingGroups && groups.length === 0 && (
             <div className="text-[12px] text-white/60 py-2">No Sonos speakers found on this account.</div>
           )}
-          {groups.map((g) => (
-            <div key={g.id} className="flex items-center gap-2 py-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] truncate">{g.name}</div>
-                <div className="text-[11px]" style={{ color: activeName === g.name ? 'var(--gr-accent)' : 'rgba(255,255,255,0.4)' }}>
-                  {activeName === g.name ? 'Streaming here' : 'Sonos'}
+          {groups.map((g) => {
+            const isStreaming = isStreamingPlayback(g.playbackState);
+            const isActive = activeName === g.name;
+            const sub = isActive
+              ? activeStationName
+                ? `Now playing: ${activeStationName}`
+                : 'Streaming here'
+              : isStreaming
+                ? 'Streaming'
+                : 'Sonos';
+            return (
+              <div key={g.id} className="flex items-center gap-2 py-1.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] truncate">{g.name}</div>
+                  <div className="text-[11px]" style={{ color: isActive || isStreaming ? 'var(--gr-accent)' : 'rgba(255,255,255,0.4)' }}>
+                    {sub}
+                  </div>
                 </div>
+                <button
+                  onClick={() => void handleHandoff(g)}
+                  disabled={!!busyGroup || !currentStation}
+                  className="text-[12px] font-medium rounded-full px-3 py-1 transition-colors"
+                  style={{
+                    background: isActive || isStreaming ? 'rgba(var(--gr-accent-rgb),0.2)' : 'rgba(255,255,255,0.1)',
+                    color: isActive || isStreaming ? 'var(--gr-accent)' : '#fff',
+                    cursor: !currentStation || busyGroup ? 'not-allowed' : 'pointer',
+                    opacity: !currentStation || busyGroup ? 0.5 : 1,
+                    border: 'none',
+                  }}
+                >
+                  {busyGroup === g.id ? '…' : isActive || isStreaming ? 'Playing' : 'Play here'}
+                </button>
               </div>
-              <button
-                onClick={() => void handleHandoff(g)}
-                disabled={!!busyGroup || !currentStation}
-                className="text-[12px] font-medium rounded-full px-3 py-1 transition-colors"
-                style={{
-                  background: activeName === g.name ? 'rgba(var(--gr-accent-rgb),0.2)' : 'rgba(255,255,255,0.1)',
-                  color: activeName === g.name ? 'var(--gr-accent)' : '#fff',
-                  cursor: !currentStation || busyGroup ? 'not-allowed' : 'pointer',
-                  opacity: !currentStation || busyGroup ? 0.5 : 1,
-                  border: 'none',
-                }}
-              >
-                {busyGroup === g.id ? '…' : activeName === g.name ? 'Playing' : 'Play here'}
-              </button>
-            </div>
-          ))}
+            );
+          })}
 
           {!currentStation && (
             <div className="text-[11px] text-white/40 mt-2">Pick a station first, then send it to a speaker.</div>
@@ -186,7 +202,7 @@ export default function SonosPanel({ onClose, onBack }: { onClose: () => void; o
             Disconnect
           </button>
         )}
-        {activeName && (
+        {(activeName || streamingGroup) && (
           <button
             onClick={() => void handleStop()}
             className="text-[12px] font-medium rounded-full px-3 py-1"

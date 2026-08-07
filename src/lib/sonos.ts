@@ -400,6 +400,10 @@ const STREAMING_STATES = new Set([
   'PLAYBACK_STATE_LOADING',
 ]);
 
+export function isStreamingPlayback(state: string | null | undefined): boolean {
+  return !!state && STREAMING_STATES.has(state);
+}
+
 export interface GroupPlayback {
   playbackState: string | null;
   title: string | null;
