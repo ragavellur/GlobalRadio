@@ -21,7 +21,7 @@ export default function BottomPanel() {
   const {
     selectedCity, currentStation, isPlaying, pendingStationUrl, sonosSession, castSession, drawerOpen,
     audioVolume, setVolume,
-    playStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, setCastSession, openSocialRoom, setDrawerOpen,
+    playStation, selectStation, pausePlayback, setPendingStationUrl, setStationSilent, setSonosSession, setCastSession, openSocialRoom, setDrawerOpen,
   } = useRadioStore();
 
   const [stations, setStations] = useState<Station[]>([]);
@@ -147,17 +147,10 @@ export default function BottomPanel() {
 
   const handlePlayStation = useCallback(
     (station: Station) => {
-      if (sonosSessionRef.current) {
-        void stopSonosIfActive().then(() => {
-          stopCastIfActive();
-          playStation(station);
-        });
-      } else {
-        stopCastIfActive();
-        playStation(station);
-      }
+      stopCastIfActive();
+      selectStation(station);
     },
-    [playStation, stopSonosIfActive, stopCastIfActive]
+    [selectStation, stopCastIfActive]
   );
 
   useEffect(() => {

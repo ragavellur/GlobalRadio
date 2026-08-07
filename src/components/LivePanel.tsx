@@ -25,7 +25,7 @@ function LivePanelInner() {
   const dms = useDMs(open, 'live');
   const { user } = useAuth();
   const { openSignInDialog } = useSignInDialog();
-  const { cities, selectedCity, playStation, setPendingStationUrl, openSocialRoom } = useRadioStore();
+  const { cities, selectedCity, selectStation, setPendingStationUrl, openSocialRoom } = useRadioStore();
 
   const meId = user?.id ?? null;
   const onlineListeners = listeners.filter((u) => u.online && u.user_id !== meId);
@@ -37,14 +37,14 @@ function LivePanelInner() {
     if (!city) return;
     const station = { name: ls.station_name, url: ls.station_url };
     if (selectedCity?.cityId === city.cityId) {
-      playStation(station);
+      selectStation(station);
       return;
     }
     setPendingStationUrl(ls.station_url);
     if ((window as any).__flyToCity) {
       (window as any).__flyToCity(city);
     } else {
-      playStation(station);
+      selectStation(station);
     }
   };
 

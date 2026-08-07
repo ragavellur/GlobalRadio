@@ -20,7 +20,7 @@ export default function FavoritesPanel() {
 function FavoritesPanelInner() {
   const { user, signInWithGoogle, signOut } = useAuth();
   const { favorites, loading, removeFavorite } = useFavorites();
-  const { cities, selectedCity, selectCity, playStation, setPendingStationUrl, drawerOpen } = useRadioStore();
+  const { cities, selectedCity, selectCity, selectStation, setPendingStationUrl, drawerOpen } = useRadioStore();
   const [panelOpen, setPanelOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -35,7 +35,7 @@ function FavoritesPanelInner() {
     );
     if (!city) return;
     if (selectedCity?.cityId === city.cityId) {
-      playStation({ name: fav.station_name, url: fav.station_url });
+      selectStation({ name: fav.station_name, url: fav.station_url });
       return;
     }
     setPendingStationUrl(fav.station_url);

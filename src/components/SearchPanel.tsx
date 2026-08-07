@@ -10,7 +10,7 @@ interface CityHit extends City {}
 export default function SearchPanel() {
   const {
     selectCity, drawerOpen, selectedCity, cities, indexLoaded,
-    playStation, setPendingStationUrl,
+    selectStation, setPendingStationUrl,
   } = useRadioStore();
   const [query, setQuery] = useState('');
   const [cityResults, setCityResults] = useState<CityHit[]>([]);
@@ -60,7 +60,7 @@ export default function SearchPanel() {
     const city = cities[hit.cityIdx] ?? null;
     const station = { name: hit.name, url: hit.url };
     if (!city || (selectedCity && selectedCity.cityId === city.cityId)) {
-      playStation(station);
+      selectStation(station);
       return;
     }
     setPendingStationUrl(hit.url);
