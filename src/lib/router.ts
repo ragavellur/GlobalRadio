@@ -94,3 +94,31 @@ export function slugify(text: string): string {
     .replace(/[\s_]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
+
+export interface StationSharePayload {
+  n: string;
+  u: string;
+  c: string;
+  y: string;
+}
+
+export function encodeStationPayload(payload: StationSharePayload): string {
+  return encodeURIComponent(JSON.stringify(payload));
+}
+
+export function decodeStationPayload(stationId: string): StationSharePayload | null {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(stationId)) as Partial<StationSharePayload>;
+    if (parsed && typeof parsed.n === 'string' && typeof parsed.u === 'string') {
+      return { n: parsed.n, u: parsed.u, c: parsed.c ?? '', y: parsed.y ?? '' };
+    }
+  } catch {
+    // malformed share payload
+  }
+  return null;
+}
+
+export function stationShareUrl(payload: StationSharePayload): string {
+  const slug = slugify(payload.n) || 'station';
+  return `https://radio.vellur.in/#/listen/${slug}/${encodeStationPayload(payload)}`;
+}

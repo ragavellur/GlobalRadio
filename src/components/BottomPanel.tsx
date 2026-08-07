@@ -13,6 +13,9 @@ import { stopStreaming } from '../lib/sonos';
 import { stopCast } from '../lib/cast';
 import { registerAudio } from '../lib/airplay';
 import OutputButton from './OutputButton';
+import { stationShareUrl } from '../lib/router';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 export default function BottomPanel() {
   const {
@@ -207,6 +210,33 @@ export default function BottomPanel() {
     [openSocialRoom]
   );
 
+  const handleShareStation = useCallback(async (station: Station) => {
+    const url = stationShareUrl({
+      n: station.name,
+      u: station.url,
+      c: selectedCity?.city ?? '',
+      y: selectedCity?.country ?? '',
+    });
+    const title = `${station.name} — Global Radio`;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({ title, url, dialogTitle: 'Share station' });
+      } else if (navigator.share) {
+        await navigator.share({ title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch {
+      if (!Capacitor.isNativePlatform()) {
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          // clipboard unavailable
+        }
+      }
+    }
+  }, [selectedCity]);
+
   return (
     <>
       {/* === Desktop panel (left side, 325px) === */}
@@ -235,6 +265,7 @@ export default function BottomPanel() {
           castName={castSession?.deviceName ?? null}
           onOpenCityChat={handleOpenCityChat}
           onOpenStationChat={handleOpenStationChat}
+          onShareStation={handleShareStation}
         />
       </div>
 
@@ -261,22 +292,23 @@ export default function BottomPanel() {
 
       {currentStation && (
         <div className="sm:hidden absolute inset-x-0 bottom-0 z-20 pointer-events-auto">
-          <MobileNowPlaying
-            currentStation={currentStation}
-            selectedCity={selectedCity}
-            audioStatus={audioStatus}
-            isPlaying={isPlaying}
-            playStation={handlePlayStation}
-            stations={stations}
-            togglePlayback={togglePlayback}
-            sonosActive={!!sonosSession}
-            sonosName={sonosSession?.name ?? null}
-            castActive={!!castSession}
-            castName={castSession?.deviceName ?? null}
-            volume={audioVolume}
-            onVolumeChange={handleVolumeChange}
-            onOpenStationChat={handleOpenStationChat}
-          />
+        <MobileNowPlaying
+          currentStation={currentStation}
+          selectedCity={selectedCity}
+          audioStatus={audioStatus}
+          isPlaying={isPlaying}
+          playStation={handlePlayStation}
+          stations={stations}
+          togglePlayback={togglePlayback}
+          sonosActive={!!sonosSession}
+          sonosName={sonosSession?.name ?? null}
+          castActive={!!castSession}
+          castName={castSession?.deviceName ?? null}
+          volume={audioVolume}
+          onVolumeChange={handleVolumeChange}
+          onOpenStationChat={handleOpenStationChat}
+          onShareStation={handleShareStation}
+        />
         </div>
       )}
     </>
@@ -288,7 +320,7 @@ function DrawerContent({
   selectedCity, stations, loadingStations, drawerOpen, currentStation,
   isPlaying, audioStatus, localTime, handleToggleDrawer, playStation, togglePlayback, counts,
   volume, onVolumeChange,
-  sonosActive, sonosName, castActive, castName, onOpenCityChat, onOpenStationChat,
+  sonosActive, sonosName, castActive, castName, onOpenCityChat, onOpenStationChat, onShareStation,
 }: {
   selectedCity: any;
   stations: Station[];
@@ -310,6 +342,7 @@ function DrawerContent({
   castName: string | null;
   onOpenCityChat: (city: any) => void;
   onOpenStationChat: (station: Station) => void;
+  onShareStation: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   const { isFavorite } = useFavorites();
@@ -499,6 +532,7 @@ function DrawerContent({
               isCurrentFavorite={currentFav}
               onToggleFavorite={() => toggleFavoriteAction(currentStation, selectedCity)}
               onOpenStationChat={onOpenStationChat}
+              onShareStation={onShareStation}
             />
           )}
         </>
@@ -612,7 +646,7 @@ function PlayerBar({
   currentStation, selectedCity, audioStatus, isPlaying,
   playStation, stations, togglePlayback, volume, onVolumeChange,
   sonosActive, sonosName, castActive, castName,
-  isCurrentFavorite, onToggleFavorite, onOpenStationChat,
+  isCurrentFavorite, onToggleFavorite, onOpenStationChat, onShareStation,
 }: {
   currentStation: Station;
   selectedCity: any;
@@ -630,6 +664,7 @@ function PlayerBar({
   isCurrentFavorite: boolean;
   onToggleFavorite: () => void;
   onOpenStationChat: (station: Station) => void;
+  onShareStation: (station: Station) => void;
 }) {
   const handleSkip = (dir: 1 | -1) => {
     if (stations.length === 0) return;
@@ -674,6 +709,21 @@ function PlayerBar({
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => onShareStation(currentStation)}
+          aria-label={`Share ${currentStation.name}`}
+          title="Share station"
+          className="flex items-center justify-center shrink-0 transition-colors bg-transparent hover:bg-[#494949]"
+          style={{ width: 50, height: 50, cursor: 'pointer', border: 'none', padding: 0 }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
           </svg>
         </button>
       </div>
@@ -787,7 +837,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 function MobileNowPlaying({
   currentStation, selectedCity, audioStatus, isPlaying,
   playStation, stations, togglePlayback, sonosActive, sonosName, castActive, castName,
-  volume, onVolumeChange, onOpenStationChat,
+  volume, onVolumeChange, onOpenStationChat, onShareStation,
 }: {
   currentStation: Station;
   selectedCity: any;
@@ -803,6 +853,7 @@ function MobileNowPlaying({
   volume: number;
   onVolumeChange: (v: number) => void;
   onOpenStationChat: (station: Station) => void;
+  onShareStation: (station: Station) => void;
 }) {
   const toggleFavoriteAction = useFavoriteAction();
   return (
@@ -828,6 +879,21 @@ function MobileNowPlaying({
           onToggle={() => toggleFavoriteAction(currentStation, selectedCity)}
           size={20}
         />
+        <button
+          onClick={(e) => { e.stopPropagation(); onShareStation(currentStation); }}
+          aria-label={`Share ${currentStation.name}`}
+          title="Share station"
+          className="flex items-center justify-center shrink-0 rounded-full bg-transparent hover:bg-white/10 transition-colors"
+          style={{ width: 32, height: 32, cursor: 'pointer', border: 'none' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gr-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+        </button>
         <button
           onClick={(e) => { e.stopPropagation(); onOpenStationChat(currentStation); }}
           aria-label={`Chat about ${currentStation.name}`}

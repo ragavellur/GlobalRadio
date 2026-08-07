@@ -10,6 +10,7 @@ import { AuthProvider } from './lib/auth';
 import { FavoritesProvider } from './lib/favorites';
 import { RadioProvider, useRadioStore } from './lib/store';
 import { useRouter } from './hooks/useRouter';
+import { useStationDeepLink } from './hooks/useStationDeepLink';
 import { HeartbeatProvider } from './hooks/useHeartbeat';
 import { useSonosSession } from './hooks/useSonosSession';
 import SonosResumeBanner from './components/SonosResumeBanner';
@@ -51,6 +52,7 @@ function IntroPlayButton() {
 function AppContent() {
   const { currentRoute } = useRouter();
   const { resume, dismissResume, playHereInstead } = useSonosSession();
+  useStationDeepLink();
 
   useEffect(() => {
     if (currentRoute.type === 'search') {

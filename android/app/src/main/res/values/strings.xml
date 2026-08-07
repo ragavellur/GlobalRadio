@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Global Radio</string>
+    <string name="title_activity_main">Global Radio</string>
+    <string name="package_name">io.github.ragavellur.globalradio</string>
+    <string name="custom_url_scheme">io.github.ragavellur.globalradio</string>
+</resources>

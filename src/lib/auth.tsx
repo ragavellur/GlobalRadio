@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
+import { Browser } from '@capacitor/browser';
 import { supabase } from './supabase';
+import { isNative, initNativeDeepLinks, AUTH_REDIRECT } from './native';
 
 interface AuthValue {
   user: User | null;
@@ -17,6 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    initNativeDeepLinks();
+
     if (!supabase) {
       setLoading(false);
       return;
@@ -46,6 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       signInWithGoogle: async () => {
         if (!supabase) return;
+        if (isNative()) {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: AUTH_REDIRECT,
+              skipBrowserRedirect: true,
+            },
+          });
+          if (error) throw error;
+          if (data.url) await Browser.open({ url: data.url });
+          return;
+        }
         await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: { redirectTo: window.location.origin },

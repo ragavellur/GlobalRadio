@@ -93,6 +93,14 @@
         if (typeof parsedState.redirectUri === 'string') redirectUri = parsedState.redirectUri;
       }
 
+      // Native flow: the app opened Sonos in a Custom Tab. Bounce back to the
+      // globalradio://sonos-callback deep link (carrying code + state) so the
+      // app can exchange the code itself.
+      if (parsedState && parsedState.native === true) {
+        window.location.replace('globalradio://sonos-callback' + window.location.search);
+        return;
+      }
+
       fetch(fn, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

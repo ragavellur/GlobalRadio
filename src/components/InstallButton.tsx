@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { isNative } from '../lib/native';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,6 +12,7 @@ export default function InstallButton() {
   const [hintOpen, setHintOpen] = useState(false);
 
   useEffect(() => {
+    if (isNative()) return;
     if (window.matchMedia('(display-mode: standalone)').matches) return;
 
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);

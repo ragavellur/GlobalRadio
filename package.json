@@ -7,6 +7,10 @@
     "dev": "vite",
     "generate-icons": "node scripts/generate-icons.mjs",
     "build": "npm run generate-icons && node scripts/build-station-index.mjs && tsc && vite build && cp -r public/data dist/ && cp dist/index.html dist/404.html",
+    "android:assets": "node scripts/generate-android-assets.mjs",
+    "android:version": "node scripts/set-android-version.mjs",
+    "android:sync": "npm run build && npm run android:version && npx cap sync android",
+    "android:open": "npx cap open android",
     "preview": "vite preview"
   },
   "keywords": [
@@ -30,6 +34,12 @@
   },
   "homepage": "https://github.com/ragavellur/GlobalRadio#readme",
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/share": "^8.0.1",
     "@supabase/supabase-js": "^2.111.0",
     "fuse.js": "^7.5.0",
     "kdbush": "^4.1.0",

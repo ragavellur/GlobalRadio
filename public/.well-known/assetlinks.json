@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.ragavellur.globalradio",
+      "sha256_cert_fingerprints": ["C405735748DE636F7E68E7F11B0DC12365468824A400A7BC91D31BD4C4893C25"]
+    }
+  }
+]

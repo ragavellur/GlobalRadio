@@ -1,5 +1,7 @@
 import type { SonosSession } from '../types';
 import { supabase } from './supabase';
+import { Browser } from '@capacitor/browser';
+import { isNative } from './native';
 
 export const SONOS_CLIENT_ID = import.meta.env.VITE_SONOS_CLIENT_ID as string | undefined;
 export const SONOS_REDIRECT_URI = import.meta.env.VITE_SONOS_REDIRECT_URI as string | undefined;
@@ -63,11 +65,34 @@ export function isConnected(): boolean {
 
 /* ============ OAuth connect (popup) ============ */
 
+// Exchange the OAuth code for tokens via the sonos-auth edge function (the
+// client secret lives server-side). Mirrors public/sonos-callback.html.
+async function exchangeCode(code: string, redirectUri: string): Promise<SonosTokens> {
+  if (!SONOS_FUNCTION_URL) throw new SonosError('Sonos is not configured');
+  const res = await fetch(SONOS_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'token', code, redirect_uri: redirectUri }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.access_token) {
+    throw new SonosError((body as any)?.error || 'Failed to exchange Sonos authorization code');
+  }
+  return body as SonosTokens;
+}
+
 export function connect(): Promise<SonosTokens> {
+  // Sonos only accepts HTTPS redirect URIs, so the same public
+  // sonos-callback.html page is used for web and native. On native the
+  // callback page detects the `native` state flag and bounces back to the
+  // globalradio://sonos-callback deep link with the code.
+  const native = isNative();
+  const redirectUri: string = SONOS_REDIRECT_URI!;
   const stateObj = {
     csrf: Math.random().toString(36).slice(2) + Date.now().toString(36),
     fn: SONOS_FUNCTION_URL,
-    redirectUri: SONOS_REDIRECT_URI,
+    redirectUri,
+    native,
   };
   const state = btoa(JSON.stringify(stateObj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   sessionStorage.setItem(STATE_KEY, state);
@@ -77,8 +102,47 @@ export function connect(): Promise<SonosTokens> {
     response_type: 'code',
     state,
     scope: 'playback-control-all',
-    redirect_uri: SONOS_REDIRECT_URI!,
+    redirect_uri: redirectUri,
   });
+
+  // Native: open the auth page in a Custom Tab and complete the flow when the
+  // globalradio://sonos-callback deep link returns to the app.
+  if (isNative()) {
+    return new Promise<SonosTokens>((resolve, reject) => {
+      const onNative = async (event: Event) => {
+        window.removeEventListener('sonos-callback', onNative);
+        sessionStorage.removeItem(STATE_KEY);
+        const href = (event as CustomEvent<string>).detail;
+        let u: URL;
+        try {
+          u = new URL(href);
+        } catch {
+          reject(new SonosError('Sonos connection failed'));
+          return;
+        }
+        const oauthError = u.searchParams.get('error');
+        const code = u.searchParams.get('code');
+        if (oauthError) {
+          reject(new SonosError(`Sonos authorization failed: ${oauthError}`));
+          return;
+        }
+        if (!code) {
+          reject(new SonosError('Missing authorization code.'));
+          return;
+        }
+        try {
+          const tokens = await exchangeCode(code, redirectUri);
+          saveTokens(tokens);
+          void syncTokensToServer();
+          resolve(tokens);
+        } catch (e) {
+          reject(e instanceof Error ? e : new SonosError('Sonos connection failed'));
+        }
+      };
+      window.addEventListener('sonos-callback', onNative);
+      void Browser.open({ url: `${AUTH_URL}?${params.toString()}` });
+    });
+  }
 
   return new Promise<SonosTokens>((resolve, reject) => {
     const onMessage = (event: MessageEvent) => {

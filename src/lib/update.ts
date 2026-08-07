@@ -1,4 +1,17 @@
 import { registerSW } from 'virtual:pwa-register';
+import { Capacitor } from '@capacitor/core';
+
+async function unregisterNativeServiceWorkers() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  const regs = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(regs.map((r) => r.unregister()));
+  if (regs.length > 0) {
+    const controllers = await navigator.serviceWorker.getRegistrations();
+    if (controllers.length === 0 && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+    }
+  }
+}
 
 type UpdateListener = (available: boolean) => void;
 
@@ -58,6 +71,11 @@ export function initUpdateSystem() {
   initialized = true;
 
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+  if (Capacitor.isNativePlatform()) {
+    void unregisterNativeServiceWorkers();
+    return;
+  }
 
   updateSW = registerSW({
     immediate: true,
